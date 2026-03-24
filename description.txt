@@ -1,0 +1,75 @@
+# NewsForU — Personalised News Digest Platform
+
+## Project Overview
+
+NewsForU is a full-stack web application that delivers a daily personalised news digest to users via email and a web dashboard. The core problem it solves is information overload — instead of a user visiting five different news websites every morning, NewsForU fetches, filters, summarises, and ranks the most relevant news articles for that specific user and delivers them in a single clean digest. The platform is built with an India-first philosophy, meaning Indian national news is always prioritised and displayed before world news, making it directly relevant to the Indian reader's daily context.
+
+The application is built on the MERN stack — MongoDB, Express.js, React, and Node.js — with AI integration via Google's Gemini 1.5 Flash API for article summarisation and personalised ranking. Background job processing is handled by BullMQ with Redis as the queue store, enabling reliable scheduled pipelines that run independently of the main API server. News data is sourced from NewsAPI.org as the primary provider, with NewsData.io as an automatic fallback when daily quotas are exhausted.
+
+---
+
+## Problem Statement
+
+The average Indian news reader has to navigate multiple sources — national newspapers, tech blogs, business portals — to piece together a coherent picture of what happened today. Existing aggregators like Google News and Inshorts provide generic feeds that are not truly personalised. They segment users by broad topic selections but do not adapt to individual reading behaviour over time. There is no platform that combines real-time Indian news aggregation, AI-powered summarisation, per-user taste learning, and reliable scheduled email delivery in a single cohesive product built specifically for the Indian audience.
+
+NewsForU addresses this gap by building a personalisation engine that learns from every user interaction. When a user likes an article, the source gets boosted in their taste profile. When they dislike one, that topic gets deprioritised. Over time, the digest becomes increasingly tailored to that individual's reading preferences — without requiring any manual configuration beyond the initial topic selection.
+
+---
+
+## Core Features and Functionality
+
+**User Authentication and Preferences**
+
+Users register with their name, email, and password. Passwords are hashed using bcrypt and a JWT is issued on login, stored in an httpOnly cookie for security. Once authenticated, users configure their experience through a preferences panel — selecting one or more news topics from General, Technology, Business, Sports, Health, Science, and Entertainment, setting their preferred daily delivery time, and choosing between daily or weekly digest frequency. These preferences drive everything downstream — the articles fetched, the digest assembled, and the email scheduled.
+
+**News Data Pipeline**
+
+The article fetching system runs as an independent background pipeline via BullMQ, triggered every two hours by a cron scheduler. For each registered topic, the system calls NewsAPI.org with a `country=in` parameter to pull the latest Indian headlines. A separate world news fetch runs without the country filter to source international stories. If the NewsAPI.org daily quota of 100 requests is exhausted, the system automatically falls back to NewsData.io, which provides 200 credits per day, ensuring continuity without any manual intervention.
+
+Every fetched article is stored in MongoDB with a `region` field — either `india` or `world` — tagged at fetch time based on the API parameters used. Articles are deduplicated by URL using a MongoDB upsert with `$setOnInsert`, so the same story appearing across multiple fetch cycles is stored only once. Each article document stores the title, source domain, category, snippet, image URL (when provided by the API), and publication date.
+
+**AI Summarisation**
+
+After articles are stored, any article where the `aiSummary` field is null is sent to Gemini 1.5 Flash for summarisation. Gemini returns a two-sentence plain English summary of the article, which is saved back to the article document in MongoDB. This summarisation happens once per article and is never repeated — already-summarised articles are explicitly excluded from the Gemini call, keeping API usage efficient. The free tier of Gemini 1.5 Flash supports up to one million tokens per day, which is far more than sufficient for a portfolio-scale deployment.
+
+**Personalised Digest Assembly**
+
+Digest generation runs as a second independent BullMQ pipeline. A scheduler checks every five minutes for users whose chosen delivery time matches the current time slot, and enqueues a `generateDigest` job for each qualifying user. The worker fetches articles from the last 24 hours matching the user's selected topics, splits them into India and world pools by the region field, and sends both pools to Gemini along with the user's taste profile. Gemini returns a relevance score from one to ten for each article, adjusted by the user's liked sources, disliked topics, and recent read history. The top six India articles and top four world articles are assembled into a digest document and saved to MongoDB before the email is sent. The digest is always pre-computed — when the user opens their dashboard, it loads from the database instantly rather than being generated on demand.
+
+**Email Delivery**
+
+Once the digest is assembled, the email service renders an HTML email template populated with the ten articles — India section first, world section second — each showing the article title, two-sentence AI summary, source name, image thumbnail where available, and a link to the full article. The email is delivered via Nodemailer using Gmail SMTP, which is free and requires no additional service setup for a portfolio-scale project. If delivery fails, BullMQ automatically retries up to three times with exponential backoff before marking the digest as failed. Every email includes a one-click unsubscribe link that sets the user's account to inactive and stops all future deliveries.
+
+**Feedback and Taste Learning**
+
+Every article in the web dashboard has three feedback actions — like, dislike, and bookmark. Liking an article adds the source domain to the user's `likedSources` array in their taste profile. Disliking adds the article's category to `dislikedTopics`. Bookmarking saves the article to a retrievable bookmarks collection. When an article link is opened, its ID is added to the user's `readHistory` array, which is capped at the last fifty entries. All of these signals are included in the Gemini ranking prompt for the next digest, so the personalisation loop closes automatically — no retraining, no ML infrastructure, just prompt engineering with user-specific context.
+
+**Web Dashboard**
+
+The React frontend provides a clean reading interface where users can view today's digest, browse past digests in a paginated history view, manage their bookmarks, and update their preferences. Article cards display the image when available, with a fallback to the publication's favicon fetched via the Google favicon API when no image is present. The dashboard shows a friendly "your digest is scheduled for X:XX AM" message if the digest hasn't been generated yet for the day.
+
+---
+
+## Technical Architecture
+
+The system is split into two independently running processes — the Express API server handles all user-facing requests, and the BullMQ worker process handles all background jobs. They share MongoDB and Redis but run completely independently, meaning a crash in the worker does not affect API availability and vice versa.
+
+MongoDB holds five collections: `users` (profile, preferences, taste profile), `articles` (fetched and AI-summarised content), `digests` (per-user assembled article lists with scores), and `feedbacks` (per-user reactions to individual articles). A compound unique index on `userId` and `date` in the digests collection enforces the one-digest-per-user-per-day constraint at the database level.
+
+The frontend is built in React with Vite for fast development builds and TailwindCSS for styling. An Axios instance with request interceptors handles authentication headers automatically. React Context manages the authenticated user state globally, and custom hooks encapsulate the digest fetching and feedback submission logic to keep page components clean.
+
+The entire stack is deployed at zero cost — the React frontend on Vercel, the Express API and BullMQ worker on Render's free tier, MongoDB on Atlas's free 512MB cluster, and Redis on Upstash's free serverless tier.
+
+---
+
+## Key Engineering Decisions
+
+**Decoupled pipelines** — Article fetching and digest generation intentionally run as two separate BullMQ pipelines rather than one combined job. This means a slow or failing news API does not delay email delivery — the digest generator simply works from whatever articles are already in MongoDB.
+
+**Fetch once, personalise many** — Articles are fetched globally per topic, not per user. A single fetch cycle serves all users regardless of how many are registered. Personalisation only happens at digest assembly time, using the pre-cached article pool. This keeps external API usage flat regardless of user growth.
+
+**Region tagging at source** — The `region` field is set when an article is fetched, based on the API parameters used, not inferred later from content analysis. This keeps the India-first logic simple, reliable, and fast — just a database filter on a string field, not any NLP processing.
+
+**AI as a layer, not the foundation** — Gemini is used for two well-scoped tasks: summarisation (once per article, cached) and ranking (once per digest, using a structured prompt). The product works without AI in a degraded mode — articles still get fetched, stored, and delivered. AI improves the experience but is not a single point of failure.
+
+---
