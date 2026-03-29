@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
 import authRoutes from './routes/auth.routes.js';
+import newsRoutes from './routes/news.routes.js';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(cookieParser());
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
+app.use('/api/news', newsRoutes);
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
