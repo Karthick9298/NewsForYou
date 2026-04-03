@@ -3,8 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Mail, ArrowRight, Loader2, ChevronLeft, Check,
   Briefcase, Trophy, Clapperboard, Cpu, HeartPulse,
-  FlaskConical, Landmark, Globe2, Leaf, GraduationCap,
-  Sun, Moon, ShieldCheck, Newspaper, Sparkles,
+  FlaskConical, Sun, Moon, ShieldCheck, Newspaper, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,17 +15,15 @@ import nfuLogo from '@/assets/NFU_logo.png';
 const STEP = { EMAIL: 1, OTP: 2, INTERESTS: 3, NOTIFICATION: 4 };
 const STEP_LABELS = ['Email', 'Verify', 'Topics', 'Schedule'];
 
+// NewsAPI supports exactly these 7 categories
 const ALL_INTERESTS = [
-  { id: 'Business',      label: 'Business',      icon: Briefcase,    color: 'from-blue-500/20 to-blue-500/5',    iconColor: 'text-blue-400',    border: 'border-blue-500/40' },
-  { id: 'Sports',        label: 'Sports',        icon: Trophy,       color: 'from-green-500/20 to-green-500/5',  iconColor: 'text-green-400',   border: 'border-green-500/40' },
-  { id: 'Entertainment', label: 'Entertainment', icon: Clapperboard, color: 'from-pink-500/20 to-pink-500/5',    iconColor: 'text-pink-400',    border: 'border-pink-500/40' },
-  { id: 'Technology',    label: 'Technology',    icon: Cpu,          color: 'from-cyan-500/20 to-cyan-500/5',    iconColor: 'text-cyan-400',    border: 'border-cyan-500/40' },
-  { id: 'Health',        label: 'Health',        icon: HeartPulse,   color: 'from-red-500/20 to-red-500/5',      iconColor: 'text-red-400',     border: 'border-red-500/40' },
-  { id: 'Science',       label: 'Science',       icon: FlaskConical, color: 'from-violet-500/20 to-violet-500/5',iconColor: 'text-violet-400',  border: 'border-violet-500/40' },
-  { id: 'Politics',      label: 'Politics',      icon: Landmark,     color: 'from-orange-500/20 to-orange-500/5',iconColor: 'text-orange-400',  border: 'border-orange-500/40' },
-  { id: 'World',         label: 'World News',    icon: Globe2,       color: 'from-teal-500/20 to-teal-500/5',    iconColor: 'text-teal-400',    border: 'border-teal-500/40' },
-  { id: 'Lifestyle',     label: 'Lifestyle',     icon: Leaf,         color: 'from-lime-500/20 to-lime-500/5',    iconColor: 'text-lime-400',    border: 'border-lime-500/40' },
-  { id: 'Education',     label: 'Education',     icon: GraduationCap,color: 'from-amber-500/20 to-amber-500/5',  iconColor: 'text-amber-400',   border: 'border-amber-500/40' },
+  { id: 'business',      label: 'Business',      icon: Briefcase,    color: 'from-blue-500/20 to-blue-500/5',     iconColor: 'text-blue-400',   border: 'border-blue-500/40' },
+  { id: 'sports',        label: 'Sports',        icon: Trophy,       color: 'from-green-500/20 to-green-500/5',   iconColor: 'text-green-400',  border: 'border-green-500/40' },
+  { id: 'entertainment', label: 'Entertainment', icon: Clapperboard, color: 'from-pink-500/20 to-pink-500/5',     iconColor: 'text-pink-400',   border: 'border-pink-500/40' },
+  { id: 'technology',    label: 'Technology',    icon: Cpu,          color: 'from-cyan-500/20 to-cyan-500/5',     iconColor: 'text-cyan-400',   border: 'border-cyan-500/40' },
+  { id: 'health',        label: 'Health',        icon: HeartPulse,   color: 'from-red-500/20 to-red-500/5',       iconColor: 'text-red-400',    border: 'border-red-500/40' },
+  { id: 'science',       label: 'Science',       icon: FlaskConical, color: 'from-violet-500/20 to-violet-500/5', iconColor: 'text-violet-400', border: 'border-violet-500/40' },
+  { id: 'general',       label: 'General',       icon: Newspaper,    color: 'from-amber-500/20 to-amber-500/5',   iconColor: 'text-amber-400',  border: 'border-amber-500/40' },
 ];
 
 const NOTIFICATION_OPTIONS = [
