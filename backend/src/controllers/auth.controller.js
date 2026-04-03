@@ -46,26 +46,42 @@ export const verifyOTP = async (req, res) => {
     // OTP is valid — delete it (single-use)
     await deleteOTP(email);
 
-    // Find or create the user
-    let user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      user = await User.create({ email: email.toLowerCase() });
+    // Check if user already exists
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (user) {
+      // Existing user — issue JWT with userId
+      const token = signToken({ userId: user._id, email: user.email });
+      res.cookie('token', token, getCookieOptions());
+
+      return res.status(200).json({
+        message: 'OTP verified successfully.',
+        user: {
+          id: user._id,
+          email: user.email,
+          isRegistered: user.isRegistered,
+          interests: user.interests,
+          notificationTime: user.notificationTime,
+        },
+      });
+    } else {
+      // New user — issue a temporary JWT with just the email (no userId yet).
+      // The user record will be created only after they save their interests.
+      const token = signToken({ email: email.toLowerCase() });
+      res.cookie('token', token, getCookieOptions());
+
+      return res.status(200).json({
+        message: 'OTP verified successfully.',
+        user: {
+          id: null,
+          email: email.toLowerCase(),
+          isRegistered: false,
+          interests: [],
+          notificationTime: null,
+          isNewUser: true,
+        },
+      });
     }
-
-    // Issue JWT in HTTP-only cookie
-    const token = signToken({ userId: user._id, email: user.email });
-    res.cookie('token', token, getCookieOptions());
-
-    return res.status(200).json({
-      message: 'OTP verified successfully.',
-      user: {
-        id: user._id,
-        email: user.email,
-        isRegistered: user.isRegistered,
-        interests: user.interests,
-        notificationTime: user.notificationTime,
-      },
-    });
   } catch (err) {
     console.error('[verifyOTP]', err);
     return res.status(500).json({ message: 'OTP verification failed. Please try again.' });
@@ -80,19 +96,32 @@ export const saveInterests = async (req, res) => {
       return res.status(400).json({ message: 'Select between 1 and 4 interests.' });
     }
 
+    // Must match the User model enum (lowercase) and the frontend interest IDs
     const validInterests = [
-      'Business', 'Sports', 'Entertainment', 'Technology',
-      'Health', 'Science', 'Politics', 'World', 'Lifestyle', 'Education',
+      'business', 'sports', 'entertainment', 'technology',
+      'health', 'science', 'general',
     ];
     const invalid = interests.filter((i) => !validInterests.includes(i));
     if (invalid.length > 0) {
       return res.status(400).json({ message: `Invalid interests: ${invalid.join(', ')}` });
     }
 
-    req.user.interests = interests;
-    await req.user.save();
+    if (req.pendingEmail) {
+      // Brand-new user — create their record now that they have chosen interests
+      const user = await User.create({ email: req.pendingEmail, interests });
 
-    return res.status(200).json({ message: 'Interests saved.', interests: req.user.interests });
+      // Re-issue JWT with the real userId so subsequent requests are fully authenticated
+      const token = signToken({ userId: user._id, email: user.email });
+      res.cookie('token', token, getCookieOptions());
+
+      return res.status(200).json({ message: 'Interests saved.', interests: user.interests });
+    } else {
+      // Existing (partially-registered) user — just update their interests
+      req.user.interests = interests;
+      await req.user.save();
+
+      return res.status(200).json({ message: 'Interests saved.', interests: req.user.interests });
+    }
   } catch (err) {
     console.error('[saveInterests]', err);
     return res.status(500).json({ message: 'Failed to save interests.' });

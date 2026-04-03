@@ -55,6 +55,11 @@ const worker = new Worker(
     if (job.name === 'send-otp') {
       const { email, otp } = job.data;
 
+      if(process.env.ENVIRNOMENT === 'development'){
+        console.log(`In Development mode, the otp generated was: ${otp}`)
+        return;
+      }
+
       await getBrevo().transactionalEmails.sendTransacEmail({
         subject: `${otp} is your NewsForYou verification code`,
         htmlContent: buildOTPEmailHTML(otp),

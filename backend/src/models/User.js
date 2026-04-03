@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
     },
     interests: {
       type: [String],
+      enum: ['business', 'entertainment', 'general', 'health', 'science', 'sports', 'technology'],
       default: [],
       validate: {
         validator: (arr) => arr.length <= 4,
