@@ -3,9 +3,9 @@ import { useLocation } from 'react-router-dom';
 import Loader from '@/components/Loader';
 
 /**
- * PageTransition wraps all routes and provides:
- *  - Full-screen Loader overlay on every route change
- *  - Fade-in page animation
+ * PageTransition — full-screen Loader overlay on route change (300ms min),
+ * then fades out so the page skeleton / content can show.
+ * In-page data loading is handled by each page's own skeleton UI.
  */
 function PageTransition({ children }) {
   const location = useLocation();
@@ -16,8 +16,8 @@ function PageTransition({ children }) {
     setFading(false);
     setVisible(true);
 
-    const tFade = setTimeout(() => setFading(true), 625);
-    const tHide = setTimeout(() => setVisible(false), 800);
+    const tFade = setTimeout(() => setFading(true), 300);
+    const tHide = setTimeout(() => setVisible(false), 475);
 
     return () => {
       clearTimeout(tFade);
@@ -27,7 +27,6 @@ function PageTransition({ children }) {
 
   return (
     <>
-      {/* ── Full-screen Loader overlay during transition ─────────────── */}
       {visible && (
         <div
           style={{
@@ -37,7 +36,7 @@ function PageTransition({ children }) {
             zIndex: 9990,
             overflow: 'hidden',
             opacity: fading ? 0 : 1,
-            transition: fading ? 'opacity 350ms ease-out' : 'none',
+            transition: fading ? 'opacity 175ms ease-out' : 'none',
             pointerEvents: fading ? 'none' : 'all',
           }}
         >

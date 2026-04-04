@@ -55,7 +55,7 @@ const newsArticleSchema = new mongoose.Schema(
 );
 
 // Compound index for efficient per-category, per-date queries
-newsArticleSchema.index({ category: 1, publishedAt: -1 });
+newsArticleSchema.index({ category: 1, createdAt: -1 });
 
 export const ARTICLE_CATEGORIES = CATEGORIES;
 export default mongoose.model('NewsArticle', newsArticleSchema);

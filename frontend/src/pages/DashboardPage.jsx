@@ -3,7 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
   Briefcase, Trophy, Clapperboard, Cpu, HeartPulse,
-  FlaskConical, Sun, Moon, LogOut, Newspaper, Settings, Bell, ExternalLink,
+  FlaskConical, LogOut, Newspaper, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,22 +30,29 @@ function formatDate(dateStr) {
 
 /* ── Article card ─────────────────────────────────────────────────────────── */
 function ArticleCard({ article, onClick }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
   return (
     <div
       onClick={() => onClick(article)}
       className="group cursor-pointer bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 flex flex-col"
     >
       {/* Thumbnail */}
-      {article.imageUrl ? (
-        <div className="aspect-video overflow-hidden shrink-0">
+      {article.imageUrl && !imageError ? (
+        <div className="aspect-video overflow-hidden shrink-0 relative bg-muted">
+          {/* Skeleton shown while image is loading */}
+          {!imageLoaded && (
+            <div className="absolute inset-0 bg-muted animate-pulse" />
+          )}
           <img
             src={article.imageUrl}
             alt={article.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.parentElement.classList.add('hidden');
-            }}
+            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageError(true)}
           />
         </div>
       ) : (
@@ -147,12 +154,23 @@ function FeedSkeleton({ count = 3 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="aspect-video bg-muted animate-pulse" />
-          <div className="p-4 space-y-2">
-            <div className="h-4 bg-muted rounded animate-pulse" />
-            <div className="h-4 bg-muted rounded animate-pulse w-4/5" />
-            <div className="h-3 bg-muted rounded animate-pulse w-1/2 mt-3" />
+        <div key={i} className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
+          {/* image area */}
+          <div className="aspect-video bg-muted animate-pulse shrink-0" />
+          {/* content area */}
+          <div className="p-4 flex flex-col flex-1 gap-2">
+            {/* title lines */}
+            <div className="h-4 bg-muted rounded-md animate-pulse" />
+            <div className="h-4 bg-muted rounded-md animate-pulse w-4/5" />
+            {/* description lines */}
+            <div className="h-3 bg-muted rounded-md animate-pulse mt-1" />
+            <div className="h-3 bg-muted rounded-md animate-pulse w-5/6" />
+            {/* meta row (source · date) */}
+            <div className="mt-auto pt-2 flex items-center gap-2">
+              <div className="h-3 bg-muted rounded-md animate-pulse w-1/3" />
+              <div className="h-3 bg-muted rounded-full animate-pulse w-1 shrink-0" />
+              <div className="h-3 bg-muted rounded-md animate-pulse w-1/4" />
+            </div>
           </div>
         </div>
       ))}
@@ -186,7 +204,6 @@ export function DashboardPage() {
 
   const interests = user?.interests || [];
   const digestTime = user?.notificationTime === 'morning' ? '6:00 AM' : '9:00 PM';
-  const DigestIcon = user?.notificationTime === 'morning' ? Sun : Moon;
   const totalArticles = feedGroups
     ? Object.values(feedGroups).reduce((sum, arr) => sum + arr.length, 0)
     : 0;
@@ -196,27 +213,47 @@ export function DashboardPage() {
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <img src={nfuLogo} alt="NewsForYou" className="h-10 w-auto" />
-            <nav className="hidden md:flex items-center gap-6">
-              <button className="flex items-center gap-2 text-sm text-primary font-medium">
-                <Newspaper className="w-4 h-4" /> My Digest
-              </button>
-              <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <Bell className="w-4 h-4" /> Notifications
-              </button>
-              <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <Settings className="w-4 h-4" /> Settings
-              </button>
-            </nav>
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 text-muted-foreground hover:text-foreground">
-              <LogOut className="w-4 h-4" /> Sign out
+
+          {/* ── Top row: logo + sign-out ─────────────────────────────── */}
+          <div className="flex items-center justify-between h-14">
+            <img src={nfuLogo} alt="NewsForYou" className="h-9 w-auto" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors text-xs"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign out</span>
             </Button>
           </div>
+
+          {/* ── Interest chips row ───────────────────────────────────── */}
+          {interests.length > 0 && (
+            <div className="flex items-center gap-2 pb-3 overflow-x-auto scrollbar-hide">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 shrink-0 pr-1">
+                Topics
+              </span>
+              {interests.map((cat) => {
+                const meta = INTEREST_META[cat] ?? { icon: Newspaper, label: cat, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
+                const Icon = meta.icon;
+                return (
+                  <div
+                    key={cat}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full shrink-0 ${meta.bg} border ${meta.border} ${meta.color} text-xs font-medium`}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {meta.label}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
         </div>
       </header>
 
-      <main className="pt-24 pb-16">
+      <main className="pt-28 pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
 
           {/* ── Welcome banner ──────────────────────────────────────────── */}
@@ -253,25 +290,6 @@ export function DashboardPage() {
               </div>
             </div>
           </div> */}
-
-          {/* ── Interest chips ──────────────────────────────────────────── */}
-          <div className="bg-card border border-border rounded-2xl p-6 mb-8">
-            <h2 className="text-base font-semibold text-foreground mb-4">Your Interests</h2>
-            <div className="flex flex-wrap gap-3">
-              {interests.length > 0 ? interests.map((cat) => {
-                const meta = INTEREST_META[cat] ?? { icon: Newspaper, label: cat, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
-                const Icon = meta.icon;
-                return (
-                  <div key={cat} className={`flex items-center gap-2 px-4 py-2 rounded-full ${meta.bg} border ${meta.border} text-sm font-medium ${meta.color}`}>
-                    <Icon className="w-4 h-4" />
-                    {meta.label}
-                  </div>
-                );
-              }) : (
-                <p className="text-sm text-muted-foreground">No interests set yet.</p>
-              )}
-            </div>
-          </div>
 
           {/* ── News feed ───────────────────────────────────────────────── */}
           {feedError ? (

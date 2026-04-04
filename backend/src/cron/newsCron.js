@@ -19,8 +19,7 @@ import { fetchAndStoreAllArticles } from '../services/newsFetcher.service.js';
 // Schedule: every day at 07:00 AM
 // const CRON_EXPRESSION = '0 8 * * *';
 
-const CRON_EXPRESSION = '0 19 * * *';// testing purpose
-
+const CRON_EXPRESSION = '0 5 * * *';
 
 export function startNewsCron() {
   if (!cron.validate(CRON_EXPRESSION)) {

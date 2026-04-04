@@ -136,5 +136,14 @@ html {
 }
 
 .page-enter {
-  animation: page-fade-in 0.35s ease-out 0.6s both;
+  animation: page-fade-in 0.25s ease-out 0.3s both;
+}
+
+/* ── Hide scrollbar (used on header interest chips row) ─────────────────── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
