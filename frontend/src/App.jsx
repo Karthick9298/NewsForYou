@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import LinkPage from './pages/LinkPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </PageTransition>
         </LoadingProvider>

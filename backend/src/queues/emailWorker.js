@@ -1,8 +1,6 @@
 import { Worker } from 'bullmq';
-import redis from '../config/redis.js';
+import { createRedisConnection } from '../config/redis.js';
 import { BrevoClient } from '@getbrevo/brevo';
-
-const connection = redis;
 
 let brevo;
 function getBrevo() {
@@ -49,14 +47,15 @@ function buildOTPEmailHTML(otp) {
 </html>`;
 }
 
+// Worker gets its own dedicated connection — separate from the Queue connection.
 const worker = new Worker(
   'email',
   async (job) => {
     if (job.name === 'send-otp') {
       const { email, otp } = job.data;
 
-      if(process.env.ENVIRNOMENT === 'development'){
-        console.log(`In Development mode, the otp generated was: ${otp}`)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[EmailWorker] Dev mode — OTP for ${email}: ${otp}`);
         return;
       }
 
@@ -73,7 +72,7 @@ const worker = new Worker(
       console.log(`[EmailWorker] OTP email sent to ${email}`);
     }
   },
-  { connection }
+  { connection: createRedisConnection() }
 );
 
 worker.on('completed', (job) => {
@@ -83,6 +82,10 @@ worker.on('completed', (job) => {
 worker.on('failed', (job, err) => {
   console.error(`[EmailWorker] Job ${job?.id} failed:`, err.message);
   if (err.cause) console.error('[EmailWorker] Cause:', err.cause);
+});
+
+worker.on('error', (err) => {
+  console.error('[EmailWorker] Worker error:', err);
 });
 
 export { worker };

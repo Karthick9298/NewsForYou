@@ -1,9 +1,12 @@
 import { Queue } from 'bullmq';
-import redis from '../config/redis.js';
+import { createRedisConnection } from '../config/redis.js';
 
-const connection = redis;
+// Queue gets its own dedicated connection — must not be shared with the Worker.
+const emailQueue = new Queue('email', { connection: createRedisConnection() });
 
-const emailQueue = new Queue('email', { connection });
+emailQueue.on('error', (err) => {
+  console.error('[EmailQueue] Queue error:', err);
+});
 
 /**
  * Add an OTP email job to the queue.

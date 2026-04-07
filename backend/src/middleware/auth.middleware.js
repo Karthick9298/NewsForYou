@@ -25,6 +25,7 @@ async function protect(req, res, next) {
     req.user = user;
     next();
   } catch (err) {
+    console.error('[protect]', err);
     return res.status(500).json({ message: 'Auth middleware error.' });
   }
 }
@@ -68,6 +69,7 @@ async function protectRegistration(req, res, next) {
 
     next();
   } catch (err) {
+    console.error('[protectRegistration]', err);
     return res.status(500).json({ message: 'Auth middleware error.' });
   }
 }

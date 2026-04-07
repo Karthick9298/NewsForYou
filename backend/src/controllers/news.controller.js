@@ -67,9 +67,10 @@ export async function getArticles(req, res) {
 /**
  * GET /api/news/feed
  * Returns personalised articles grouped by the signed-in user's interests.
- * Targets 12 total articles (at least 11-13) spread across interest categories,
- * sorted by createdAt (newest stored first).
- * Fallback: if ALL interest categories return 0 articles, shows 12 general articles.
+ * Only articles created TODAY (server local date) are returned.
+ * Targets 12 total articles spread across interest categories, sorted by createdAt.
+ * Fallback: if ALL interest categories return 0 today's articles, shows general.
+ * If no articles exist at all for today → groups: null.
  * Requires authentication (protect middleware on the route).
  */
 export async function getFeed(req, res) {
@@ -77,16 +78,25 @@ export async function getFeed(req, res) {
     const interests = req.user?.interests || [];
     const MIN_ARTICLES = 12;
 
-    // No interests set → serve general news directly
+    // Build today's date range (midnight → 23:59:59.999 server local time)
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    const todayFilter = { createdAt: { $gte: startOfDay, $lte: endOfDay } };
+
+    // No interests set → serve today's general news directly
     if (!interests.length) {
-      const articles = await NewsArticle.find({ category: 'general' })
+      const articles = await NewsArticle.find({ category: 'general', ...todayFilter })
         .sort({ createdAt: -1 })
         .limit(MIN_ARTICLES)
         .select('-__v');
-      return res.status(200).json({
-        groups: articles.length ? { general: articles } : {},
-        fallback: true,
-      });
+
+      if (!articles.length) {
+        return res.status(200).json({ groups: null, fallback: true });
+      }
+
+      return res.status(200).json({ groups: { general: articles }, fallback: true });
     }
 
     // Distribute target count evenly across interest categories (min 2 per cat)
@@ -95,7 +105,7 @@ export async function getFeed(req, res) {
 
     await Promise.all(
       interests.map(async (cat) => {
-        const articles = await NewsArticle.find({ category: cat })
+        const articles = await NewsArticle.find({ category: cat, ...todayFilter })
           .sort({ createdAt: -1 })
           .limit(perCat)
           .select('-__v');
@@ -105,16 +115,18 @@ export async function getFeed(req, res) {
 
     const total = Object.values(groups).reduce((sum, arr) => sum + arr.length, 0);
 
-    // Fallback: ALL interest categories had 0 articles → show general
+    // Fallback: ALL interest categories had 0 today's articles → try general
     if (total === 0) {
-      const generalArticles = await NewsArticle.find({ category: 'general' })
+      const generalArticles = await NewsArticle.find({ category: 'general', ...todayFilter })
         .sort({ createdAt: -1 })
         .limit(MIN_ARTICLES)
         .select('-__v');
-      return res.status(200).json({
-        groups: generalArticles.length ? { general: generalArticles } : {},
-        fallback: true,
-      });
+
+      if (!generalArticles.length) {
+        return res.status(200).json({ groups: null, fallback: true });
+      }
+
+      return res.status(200).json({ groups: { general: generalArticles }, fallback: true });
     }
 
     return res.status(200).json({ groups, fallback: false });

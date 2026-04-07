@@ -28,6 +28,13 @@ const articles = [
         time: "5h ago",
     },
 ];
+
+const today = new Date();
+const formattedDate = today.toLocaleDateString("en-US", {
+  month: "long",
+  day: "numeric",
+});
+
 export function EmailDigestMockup() {
     return (<div className="relative w-full max-w-md">
       {/* Email client frame */}
@@ -69,7 +76,7 @@ export function EmailDigestMockup() {
 
           {/* Subject */}
           <h3 className="font-serif text-lg font-semibold text-foreground mb-4">
-            Your Morning Digest — March 23
+            Your Morning Digest — {formattedDate}
           </h3>
 
           {/* Article cards */}

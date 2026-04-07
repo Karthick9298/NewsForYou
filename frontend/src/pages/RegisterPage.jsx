@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Mail, ArrowRight, Loader2, ChevronLeft, Check,
-  Briefcase, Trophy, Clapperboard, Cpu, HeartPulse,
-  FlaskConical, Sun, Moon, ShieldCheck, Newspaper, Sparkles,
+  ShieldCheck, Newspaper, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,103 +10,11 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import nfuLogo from '@/assets/NFU_logo.png';
+import OTPInput from '@/components/OTPInput';
+import { ALL_INTERESTS, NOTIFICATION_OPTIONS } from '@/lib/constants';
 
 const STEP = { EMAIL: 1, OTP: 2, INTERESTS: 3, NOTIFICATION: 4 };
 const STEP_LABELS = ['Email', 'Verify', 'Topics', 'Schedule'];
-
-// NewsAPI supports exactly these 7 categories
-const ALL_INTERESTS = [
-  { id: 'business',      label: 'Business',      icon: Briefcase,    color: 'from-blue-500/20 to-blue-500/5',     iconColor: 'text-blue-400',   border: 'border-blue-500/40' },
-  { id: 'sports',        label: 'Sports',        icon: Trophy,       color: 'from-green-500/20 to-green-500/5',   iconColor: 'text-green-400',  border: 'border-green-500/40' },
-  { id: 'entertainment', label: 'Entertainment', icon: Clapperboard, color: 'from-pink-500/20 to-pink-500/5',     iconColor: 'text-pink-400',   border: 'border-pink-500/40' },
-  { id: 'technology',    label: 'Technology',    icon: Cpu,          color: 'from-cyan-500/20 to-cyan-500/5',     iconColor: 'text-cyan-400',   border: 'border-cyan-500/40' },
-  { id: 'health',        label: 'Health',        icon: HeartPulse,   color: 'from-red-500/20 to-red-500/5',       iconColor: 'text-red-400',    border: 'border-red-500/40' },
-  { id: 'science',       label: 'Science',       icon: FlaskConical, color: 'from-violet-500/20 to-violet-500/5', iconColor: 'text-violet-400', border: 'border-violet-500/40' },
-  { id: 'general',       label: 'General',       icon: Newspaper,    color: 'from-amber-500/20 to-amber-500/5',   iconColor: 'text-amber-400',  border: 'border-amber-500/40' },
-];
-
-const NOTIFICATION_OPTIONS = [
-  {
-    id: 'morning',
-    label: 'Morning Digest',
-    time: '6:00 AM',
-    description: 'Start your day informed — fresh stories delivered at dawn.',
-    icon: Sun,
-    activeBg: 'bg-gradient-to-br from-amber-500/15 to-orange-500/5',
-    activeBorder: 'border-amber-500/50',
-    activeIcon: 'text-amber-400',
-    iconBg: 'bg-amber-500/15',
-    glow: 'shadow-amber-500/10',
-  },
-  {
-    id: 'night',
-    label: 'Night Recap',
-    time: '9:00 PM',
-    description: "Wind down with the day's biggest stories before bed.",
-    icon: Moon,
-    activeBg: 'bg-gradient-to-br from-indigo-500/15 to-purple-500/5',
-    activeBorder: 'border-indigo-500/50',
-    activeIcon: 'text-indigo-400',
-    iconBg: 'bg-indigo-500/15',
-    glow: 'shadow-indigo-500/10',
-  },
-];
-
-/* ── OTP boxes (same as LoginPage) ──────────────────────────────────────────── */
-function OTPInput({ value, onChange }) {
-  const inputsRef = useRef([]);
-  const digits = value.padEnd(6, ' ').split('').slice(0, 6);
-
-  function handleKey(e, idx) {
-    if (e.key === 'Backspace') {
-      const newVal = value.slice(0, idx === value.length ? value.length - 1 : idx);
-      onChange(newVal);
-      if (idx > 0) inputsRef.current[idx - 1]?.focus();
-      return;
-    }
-    if (e.key === 'ArrowLeft' && idx > 0) { inputsRef.current[idx - 1]?.focus(); return; }
-    if (e.key === 'ArrowRight' && idx < 5) { inputsRef.current[idx + 1]?.focus(); return; }
-  }
-
-  function handleChange(e, idx) {
-    const char = e.target.value.replace(/\D/g, '').slice(-1);
-    if (!char) return;
-    const arr = value.padEnd(6, ' ').split('').slice(0, 6);
-    arr[idx] = char;
-    const newVal = arr.join('').trimEnd().slice(0, 6);
-    onChange(newVal);
-    if (idx < 5) inputsRef.current[idx + 1]?.focus();
-  }
-
-  function handlePaste(e) {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    onChange(pasted);
-    inputsRef.current[Math.min(pasted.length, 5)]?.focus();
-  }
-
-  return (
-    <div className="flex gap-2 sm:gap-3 justify-center">
-      {Array.from({ length: 6 }).map((_, idx) => (
-        <input
-          key={idx}
-          ref={(el) => { inputsRef.current[idx] = el; }}
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={digits[idx]?.trim() || ''}
-          autoFocus={idx === 0}
-          onChange={(e) => handleChange(e, idx)}
-          onKeyDown={(e) => handleKey(e, idx)}
-          onPaste={handlePaste}
-          className={`w-11 h-14 sm:w-12 sm:h-16 text-center text-xl font-bold font-mono rounded-xl border-2 bg-background/60 text-foreground outline-none transition-all duration-150
-            focus:border-primary focus:bg-primary/5 focus:shadow-[0_0_0_3px_rgba(245,158,11,0.15)]
-            ${digits[idx]?.trim() ? 'border-primary/60 bg-primary/5' : 'border-border hover:border-border/80'}`}
-        />
-      ))}
-    </div>
-  );
-}
 
 /* ── Step progress bar ───────────────────────────────────────────────────────── */
 function StepBar({ current }) {

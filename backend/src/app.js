@@ -5,6 +5,9 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.routes.js';
 import newsRoutes from './routes/news.routes.js';
 
+import helmet from "helmet";
+
+
 const app = express();
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
@@ -16,6 +19,8 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+app.use(helmet());
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
@@ -33,7 +38,7 @@ app.use((req, res) => {
 
 // ── Global error handler ───────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error('[Global Error]', err);
+  console.error(`[Global Error] ${req.method} ${req.url}`, err);
   res.status(err.status || 500).json({ message: err.message || 'Internal server error.' });
 });
 

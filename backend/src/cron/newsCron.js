@@ -37,5 +37,5 @@ export function startNewsCron() {
     }
   });
 
-  console.log(`📰  News cron job scheduled — runs daily at 07:00 AM (${CRON_EXPRESSION})`);
+  console.log(`📰  News cron job scheduled — runs daily at 05:00 AM (${CRON_EXPRESSION})`);
 }

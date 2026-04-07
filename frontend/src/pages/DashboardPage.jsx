@@ -1,189 +1,47 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import {
-  Briefcase, Trophy, Clapperboard, Cpu, HeartPulse,
-  FlaskConical, LogOut, Newspaper, ExternalLink,
-} from 'lucide-react';
+import { LogOut, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import nfuLogo from '@/assets/NFU_logo.png';
+import ArticleCard from '@/components/ArticleCard';
+import ArticleModal from '@/components/ArticleModal';
+import FeedSkeleton from '@/components/FeedSkeleton';
+import { INTEREST_META, DEFAULT_INTEREST_META } from '@/lib/constants';
 
-/* ── Per-category visual metadata ─────────────────────────────────────────── */
-const INTEREST_META = {
-  business:      { icon: Briefcase,    label: 'Business',      color: 'text-blue-400',   bg: 'bg-blue-500/10',    border: 'border-blue-500/20' },
-  sports:        { icon: Trophy,       label: 'Sports',        color: 'text-green-400',  bg: 'bg-green-500/10',   border: 'border-green-500/20' },
-  entertainment: { icon: Clapperboard, label: 'Entertainment', color: 'text-pink-400',   bg: 'bg-pink-500/10',    border: 'border-pink-500/20' },
-  technology:    { icon: Cpu,          label: 'Technology',    color: 'text-cyan-400',   bg: 'bg-cyan-500/10',    border: 'border-cyan-500/20' },
-  health:        { icon: HeartPulse,   label: 'Health',        color: 'text-red-400',    bg: 'bg-red-500/10',     border: 'border-red-500/20' },
-  science:       { icon: FlaskConical, label: 'Science',       color: 'text-violet-400', bg: 'bg-violet-500/10',  border: 'border-violet-500/20' },
-  general:       { icon: Newspaper,    label: 'General',       color: 'text-amber-400',  bg: 'bg-amber-500/10',   border: 'border-amber-500/20' },
-};
+/* ── Fixed star positions for the midnight waiting card ──────────────────── */
+const NIGHT_STARS = [
+  { top: '7%',  left: '9%',  w: 2, dur: 2.1, delay: 0.0 },
+  { top: '13%', left: '22%', w: 1, dur: 3.2, delay: 0.5 },
+  { top: '5%',  left: '38%', w: 3, dur: 2.6, delay: 0.9 },
+  { top: '18%', left: '54%', w: 1, dur: 1.9, delay: 0.3 },
+  { top: '9%',  left: '70%', w: 2, dur: 3.0, delay: 1.4 },
+  { top: '22%', left: '85%', w: 1, dur: 2.4, delay: 0.7 },
+  { top: '31%', left: '6%',  w: 2, dur: 3.5, delay: 1.1 },
+  { top: '26%', left: '33%', w: 1, dur: 2.0, delay: 1.6 },
+  { top: '11%', left: '50%', w: 2, dur: 2.8, delay: 0.4 },
+  { top: '36%', left: '67%', w: 1, dur: 3.1, delay: 1.0 },
+  { top: '4%',  left: '91%', w: 2, dur: 2.0, delay: 1.9 },
+  { top: '20%', left: '14%', w: 1, dur: 2.7, delay: 0.6 },
+  { top: '29%', left: '79%', w: 3, dur: 3.3, delay: 1.2 },
+  { top: '40%', left: '44%', w: 1, dur: 2.2, delay: 0.8 },
+  { top: '16%', left: '60%', w: 2, dur: 2.9, delay: 1.7 },
+  { top: '8%',  left: '76%', w: 1, dur: 3.4, delay: 0.2 },
+  { top: '33%', left: '25%', w: 2, dur: 2.3, delay: 1.3 },
+  { top: '42%', left: '89%', w: 1, dur: 1.8, delay: 0.4 },
+  { top: '3%',  left: '47%', w: 2, dur: 3.0, delay: 2.0 },
+  { top: '24%', left: '96%', w: 1, dur: 2.5, delay: 0.1 },
+];
 
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
-/* ── Article card ─────────────────────────────────────────────────────────── */
-function ArticleCard({ article, onClick }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageError, setImageError] = useState(false);
-
-  return (
-    <div
-      onClick={() => onClick(article)}
-      className="group cursor-pointer bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 flex flex-col"
-    >
-      {/* Thumbnail */}
-      {article.imageUrl && !imageError ? (
-        <div className="aspect-video overflow-hidden shrink-0 relative bg-muted">
-          {/* Skeleton shown while image is loading */}
-          {!imageLoaded && (
-            <div className="absolute inset-0 bg-muted animate-pulse" />
-          )}
-          <img
-            src={article.imageUrl}
-            alt={article.title}
-            className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
-          />
-        </div>
-      ) : (
-        <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0">
-          <Newspaper className="w-10 h-10 text-primary/30" />
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="p-4 flex flex-col flex-1">
-        <h3 className="text-sm font-semibold text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors mb-2">
-          {article.title}
-        </h3>
-        {article.briefDescription && (
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mb-3 flex-1">
-            {article.briefDescription}
-          </p>
-        )}
-        <div className="mt-auto space-y-0.5">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            {article.publishedBy && (
-              <span className="font-medium text-foreground/70 truncate">{article.publishedBy}</span>
-            )}
-            {article.publishedBy && article.publishedAt && <span>·</span>}
-            {article.publishedAt && <span className="shrink-0">{formatDate(article.publishedAt)}</span>}
-          </div>
-          {article.author && (
-            <p className="text-xs text-muted-foreground truncate">by {article.author}</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Article detail modal ─────────────────────────────────────────────────── */
-function ArticleModal({ article, open, onClose }) {
-  if (!article) return null;
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-base leading-snug pr-6">{article.title}</DialogTitle>
-          <DialogDescription asChild>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground mt-1">
-              {article.publishedBy && <span className="font-medium">{article.publishedBy}</span>}
-              {article.author && <span>· by {article.author}</span>}
-              {article.publishedAt && <span>· {formatDate(article.publishedAt)}</span>}
-            </div>
-          </DialogDescription>
-        </DialogHeader>
-
-        {article.imageUrl && (
-          <div className="rounded-xl overflow-hidden -mx-1">
-            <img
-              src={article.imageUrl}
-              alt={article.title}
-              className="w-full h-auto object-cover"
-              onError={(e) => { e.target.parentElement.classList.add('hidden'); }}
-            />
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {article.briefDescription && (
-            <p className="text-sm font-medium text-foreground leading-relaxed">
-              {article.briefDescription}
-            </p>
-          )}
-          {article.detailDescription && (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {/* Strip NewsAPI's "[+N chars]" truncation marker */}
-              {article.detailDescription.replace(/\s*\[\+\d+ chars\]$/, '')}
-            </p>
-          )}
-          {!article.briefDescription && !article.detailDescription && (
-            <p className="text-sm text-muted-foreground">No description available.</p>
-          )}
-        </div>
-
-        <div className="pt-2 border-t border-border">
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Read full article
-          </a>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/* ── Loading skeleton row ─────────────────────────────────────────────────── */
-function FeedSkeleton({ count = 3 }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col">
-          {/* image area */}
-          <div className="aspect-video bg-muted animate-pulse shrink-0" />
-          {/* content area */}
-          <div className="p-4 flex flex-col flex-1 gap-2">
-            {/* title lines */}
-            <div className="h-4 bg-muted rounded-md animate-pulse" />
-            <div className="h-4 bg-muted rounded-md animate-pulse w-4/5" />
-            {/* description lines */}
-            <div className="h-3 bg-muted rounded-md animate-pulse mt-1" />
-            <div className="h-3 bg-muted rounded-md animate-pulse w-5/6" />
-            {/* meta row (source · date) */}
-            <div className="mt-auto pt-2 flex items-center gap-2">
-              <div className="h-3 bg-muted rounded-md animate-pulse w-1/3" />
-              <div className="h-3 bg-muted rounded-full animate-pulse w-1 shrink-0" />
-              <div className="h-3 bg-muted rounded-md animate-pulse w-1/4" />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /* ── Main dashboard ───────────────────────────────────────────────────────── */
 export function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [feedGroups, setFeedGroups] = useState(null); // null = loading
+  const [feedGroups, setFeedGroups] = useState(undefined); // undefined=loading, null=no articles today
   const [isFallback, setIsFallback] = useState(false);
   const [feedError, setFeedError] = useState('');
   const [selectedArticle, setSelectedArticle] = useState(null);
@@ -191,10 +49,13 @@ export function DashboardPage() {
   useEffect(() => {
     api.get('/api/news/feed')
       .then((data) => {
-        setFeedGroups(data.groups);
+        setFeedGroups(data.groups ?? null); // null means backend returned no today's articles
         setIsFallback(data.fallback ?? false);
       })
-      .catch((err) => setFeedError(err.message));
+      .catch((err) => {
+        setFeedGroups(null);
+        setFeedError(err.message);
+      });
   }, []);
 
   async function handleLogout() {
@@ -204,7 +65,7 @@ export function DashboardPage() {
 
   const interests = user?.interests || [];
   const digestTime = user?.notificationTime === 'morning' ? '6:00 AM' : '9:00 PM';
-  const totalArticles = feedGroups
+  const totalArticles = feedGroups && typeof feedGroups === 'object'
     ? Object.values(feedGroups).reduce((sum, arr) => sum + arr.length, 0)
     : 0;
 
@@ -235,7 +96,7 @@ export function DashboardPage() {
                 Topics
               </span>
               {interests.map((cat) => {
-                const meta = INTEREST_META[cat] ?? { icon: Newspaper, label: cat, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
+                const meta = INTEREST_META[cat] ?? DEFAULT_INTEREST_META;
                 const Icon = meta.icon;
                 return (
                   <div
@@ -292,11 +153,7 @@ export function DashboardPage() {
           </div> */}
 
           {/* ── News feed ───────────────────────────────────────────────── */}
-          {feedError ? (
-            <div className="bg-card border border-destructive/30 rounded-2xl p-8 text-center">
-              <p className="text-sm text-destructive font-medium">{feedError}</p>
-            </div>
-          ) : feedGroups === null ? (
+          {feedGroups === undefined ? (
             /* Loading — one skeleton row per interest (or 2 generic rows if no interests yet) */
             <div className="space-y-10">
               {(interests.length > 0 ? interests : ['_a', '_b']).map((cat) => (
@@ -306,26 +163,207 @@ export function DashboardPage() {
                 </section>
               ))}
             </div>
-          ) : totalArticles === 0 ? (
-            /* Empty state */
-            <div className="bg-card border border-border rounded-2xl p-10 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-                <Newspaper className="w-7 h-7 text-primary" />
-              </div>
-              <h2 className="text-lg font-semibold text-foreground mb-2">Your digest is on its way</h2>
-              <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-                We're curating personalised news stories based on your interests.
-                Check back at{' '}
-                <span className="text-primary font-medium">{digestTime}</span>
-                {' '}for your first digest.
-              </p>
+          ) : feedError ? (
+            <div className="bg-card border border-destructive/30 rounded-2xl p-8 text-center">
+              <p className="text-sm text-destructive font-medium">{feedError}</p>
             </div>
+          ) : feedGroups === null ? (
+            /* No articles for today — cron hasn't run yet (midnight → 6 AM window) */
+            <>
+              <style>{`
+                @keyframes nfu-twinkle {
+                  0%,100% { opacity: .08; transform: scale(.5); }
+                  50%      { opacity:  1;  transform: scale(1.5); }
+                }
+                @keyframes nfu-float {
+                  0%,100% { transform: translateY(0px);  }
+                  50%      { transform: translateY(-14px); }
+                }
+                @keyframes nfu-glow-breathe {
+                  0%,100% { opacity: .25; transform: scale(1);    }
+                  50%      { opacity: .55; transform: scale(1.12); }
+                }
+                @keyframes nfu-orbit-cw {
+                  from { transform: rotate(0deg);   }
+                  to   { transform: rotate(360deg); }
+                }
+                @keyframes nfu-orbit-ccw {
+                  from { transform: rotate(0deg);    }
+                  to   { transform: rotate(-360deg); }
+                }
+                @keyframes nfu-ripple {
+                  0%   { transform: scale(.85); opacity: .55; }
+                  100% { transform: scale(2.6); opacity: 0;   }
+                }
+                @keyframes nfu-dawn {
+                  0%,100% { opacity: .3; }
+                  50%      { opacity: .7; }
+                }
+                @keyframes nfu-slide-up {
+                  0%   { opacity: 0; transform: translateY(20px); }
+                  100% { opacity: 1; transform: translateY(0);    }
+                }
+                @keyframes nfu-scale-in {
+                  0%   { opacity: 0; transform: scale(.5) rotate(-20deg); }
+                  100% { opacity: 1; transform: scale(1) rotate(0deg);    }
+                }
+                @keyframes nfu-shooting-star {
+                  0%   { transform: translateX(0) translateY(0) rotate(-35deg); opacity: 1; width: 0px;   }
+                  40%  { width: 80px; opacity: 1; }
+                  100% { transform: translateX(180px) translateY(90px) rotate(-35deg); opacity: 0; width: 80px; }
+                }
+                @keyframes nfu-text-glow {
+                  0%,100% { text-shadow: 0 0 8px rgba(251,191,36,.3); }
+                  50%      { text-shadow: 0 0 24px rgba(251,191,36,.8), 0 0 48px rgba(251,191,36,.3); }
+                }
+                .nfu-shooting { animation: nfu-shooting-star 5s ease-in-out infinite; }
+                .nfu-shooting-2 { animation: nfu-shooting-star 5s ease-in-out 2.5s infinite; }
+              `}</style>
+
+              <div
+                style={{
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: '20px',
+                  border: '1px solid rgba(245,158,11,.2)',
+                  background: 'linear-gradient(170deg,#06060f 0%,#0c0a1a 35%,#0f0a08 70%,#0a0600 100%)',
+                  minHeight: 380,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '64px 32px',
+                  animation: 'nfu-slide-up .7s cubic-bezier(.22,1,.36,1) both',
+                }}
+              >
+                {/* ── Deep-space ambient glows ── */}
+                <div style={{ position:'absolute', top:-60, right:-60, width:320, height:320, borderRadius:'50%', background:'radial-gradient(circle,rgba(245,158,11,.1) 0%,transparent 65%)', animation:'nfu-glow-breathe 6s ease-in-out infinite', pointerEvents:'none' }} />
+                <div style={{ position:'absolute', bottom:-80, left:-60, width:360, height:240, borderRadius:'50%', background:'radial-gradient(circle,rgba(245,158,11,.07) 0%,transparent 65%)', animation:'nfu-glow-breathe 7s ease-in-out 1s infinite', pointerEvents:'none' }} />
+                <div style={{ position:'absolute', top:'30%', left:'30%', width:160, height:160, borderRadius:'50%', background:'radial-gradient(circle,rgba(139,92,246,.06) 0%,transparent 70%)', animation:'nfu-glow-breathe 8s ease-in-out 2s infinite', pointerEvents:'none' }} />
+
+                {/* ── Twinkling stars ── */}
+                {NIGHT_STARS.map((s, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      position: 'absolute',
+                      top: s.top, left: s.left,
+                      width: s.w, height: s.w,
+                      borderRadius: '50%',
+                      background: i % 3 === 0 ? '#fcd34d' : i % 3 === 1 ? '#e0e7ff' : '#fbcfe8',
+                      boxShadow: `0 0 ${s.w * 2}px ${s.w}px ${i % 3 === 0 ? 'rgba(252,211,77,.6)' : 'rgba(224,231,255,.4)'}`,
+                      animation: `nfu-twinkle ${s.dur}s ${s.delay}s ease-in-out infinite`,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                ))}
+
+                {/* ── Shooting stars ── */}
+                <div style={{ position:'absolute', top:'18%', left:'5%', height:1.5, background:'linear-gradient(to right,transparent,rgba(252,211,77,.9),transparent)', pointerEvents:'none', borderRadius:2 }} className="nfu-shooting" />
+                <div style={{ position:'absolute', top:'28%', left:'55%', height:1.5, background:'linear-gradient(to right,transparent,rgba(224,231,255,.8),transparent)', pointerEvents:'none', borderRadius:2 }} className="nfu-shooting-2" />
+
+                {/* ── Moon glow (top-right) ── */}
+                <div style={{ position:'absolute', top:16, right:28, width:48, height:48, borderRadius:'50%', background:'radial-gradient(circle,rgba(253,230,138,.25) 0%,rgba(253,230,138,.05) 60%,transparent 80%)', boxShadow:'0 0 24px 8px rgba(253,230,138,.12)', animation:'nfu-glow-breathe 4s ease-in-out infinite', pointerEvents:'none' }} />
+                <div style={{ position:'absolute', top:22, right:34, width:26, height:26, borderRadius:'50%', background:'radial-gradient(circle,rgba(253,230,138,.5) 0%,rgba(253,230,138,.1) 80%)', pointerEvents:'none' }} />
+
+                {/* ── Dawn horizon glow ── */}
+                <div style={{ position:'absolute', bottom:0, left:0, right:0, height:90, background:'linear-gradient(to top,rgba(245,158,11,.22),rgba(245,158,11,.06),transparent)', animation:'nfu-dawn 5s ease-in-out infinite', pointerEvents:'none' }} />
+                <div style={{ position:'absolute', bottom:0, left:'15%', right:'15%', height:1, background:'linear-gradient(to right,transparent,rgba(245,158,11,.5),transparent)', pointerEvents:'none' }} />
+
+                {/* ── Floating clock icon ── */}
+                <div style={{ position:'relative', marginBottom:32, animation:'nfu-float 4.5s ease-in-out infinite' }}>
+                  {/* Ripple rings */}
+                  <div style={{ position:'absolute', inset:-16, borderRadius:26, border:'1px solid rgba(245,158,11,.4)', animation:'nfu-ripple 2.8s ease-out infinite 0s' }} />
+                  <div style={{ position:'absolute', inset:-16, borderRadius:26, border:'1px solid rgba(245,158,11,.3)', animation:'nfu-ripple 2.8s ease-out infinite .93s' }} />
+                  <div style={{ position:'absolute', inset:-16, borderRadius:26, border:'1px solid rgba(245,158,11,.2)', animation:'nfu-ripple 2.8s ease-out infinite 1.86s' }} />
+                  {/* Outer orbit ring */}
+                  <div style={{ position:'absolute', inset:-8, borderRadius:22, border:'1px dashed rgba(245,158,11,.3)', animation:'nfu-orbit-cw 14s linear infinite' }} />
+                  {/* Inner counter-orbit ring */}
+                  <div style={{ position:'absolute', inset:6, borderRadius:14, border:'1px dashed rgba(167,139,250,.25)', animation:'nfu-orbit-ccw 9s linear infinite' }} />
+                  {/* Icon box */}
+                  <div
+                    style={{
+                      position: 'relative', zIndex: 1,
+                      width: 72, height: 72, borderRadius: 20,
+                      background: 'linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.04))',
+                      border: '1px solid rgba(245,158,11,.45)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 0 40px rgba(245,158,11,.25), 0 0 80px rgba(245,158,11,.1), inset 0 0 24px rgba(245,158,11,.06)',
+                      animation: 'nfu-scale-in .7s cubic-bezier(.34,1.56,.64,1) .1s both',
+                    }}
+                  >
+                    <Clock
+                      style={{
+                        width: 34, height: 34,
+                        color: '#fbbf24',
+                        filter: 'drop-shadow(0 0 10px rgba(251,191,36,.7)) drop-shadow(0 0 3px rgba(251,191,36,1))',
+                        animation: 'nfu-orbit-cw 10s linear infinite',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* ── Heading ── */}
+                <h2
+                  style={{
+                    position: 'relative', zIndex: 1,
+                    fontSize: 22, fontWeight: 700, color: '#f9fafb',
+                    marginBottom: 12, letterSpacing: '-.01em',
+                    animation: 'nfu-slide-up .6s .2s ease-out both',
+                  }}
+                >
+                  Please come back after{' '}
+                  <span style={{ color: '#fbbf24', animation: 'nfu-text-glow 2.5s ease-in-out infinite' }}>6 AM</span>
+                </h2>
+
+                {/* ── Body ── */}
+                <p
+                  style={{
+                    position: 'relative', zIndex: 1,
+                    fontSize: 14, color: 'rgba(156,163,175,.9)',
+                    maxWidth: 340, lineHeight: 1.7, margin: '0 auto 24px',
+                    animation: 'nfu-slide-up .6s .38s ease-out both',
+                  }}
+                >
+                  Your personalised digest is being curated overnight.
+                  Fresh stories across all your topics will be ready at{' '}
+                  <span style={{ color: '#fbbf24', fontWeight: 600, animation: 'nfu-text-glow 2.5s ease-in-out .4s infinite' }}>6:00 AM</span> sharp.
+                </p>
+
+                {/* ── Time chips ── */}
+                <div
+                  style={{
+                    position: 'relative', zIndex: 1,
+                    display: 'flex', gap: 8,
+                    animation: 'nfu-slide-up .6s .52s ease-out both',
+                  }}
+                >
+                  {['12 AM','1 AM','2 AM','3 AM','4 AM','5 AM','6 AM ✦'].map((t, i) => (
+                    <div
+                      key={t}
+                      style={{
+                        fontSize: 11, fontWeight: 500,
+                        padding: '4px 10px', borderRadius: 20,
+                        background: i === 6 ? 'rgba(245,158,11,.18)' : 'rgba(255,255,255,.04)',
+                        border: `1px solid ${i === 6 ? 'rgba(245,158,11,.45)' : 'rgba(255,255,255,.07)'}`,
+                        color: i === 6 ? '#fbbf24' : 'rgba(156,163,175,.5)',
+                        boxShadow: i === 6 ? '0 0 12px rgba(245,158,11,.2)' : 'none',
+                        transition: 'all .3s',
+                      }}
+                    >
+                      {t}
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+            </>
           ) : (
             /* Articles grouped by category — render every group the backend returned */
             <div className="space-y-10">
               {Object.entries(feedGroups).map(([cat, articles]) => {
                 if (!articles.length) return null;
-                const meta = INTEREST_META[cat] ?? { icon: Newspaper, label: cat, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' };
+                const meta = INTEREST_META[cat] ?? DEFAULT_INTEREST_META;
                 const Icon = meta.icon;
                 return (
                   <section key={cat}>

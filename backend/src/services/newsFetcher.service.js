@@ -13,15 +13,24 @@ import NewsArticle, { ARTICLE_CATEGORIES } from '../models/NewsArticle.js';
 const BASE_URL = 'https://newsapi.org/v2/top-headlines';
 const PAGE_SIZE = 15; // NewsAPI max on free tier per request
 
-// ── Build the request URL for a given category ────────────────────────────────
+// ── Build the request URL for a given category (no key in URL) ───────────────
 function buildUrl(category) {
   const params = new URLSearchParams({
     category,
     pageSize: String(PAGE_SIZE),
-    apiKey: process.env.NEWS_APIKEY,
     language: 'en',
   });
   return `${BASE_URL}?${params.toString()}`;
+}
+
+// ── Fetch wrapper — injects API key as header, never in the URL ───────────────
+// NewsAPI supports both ?apiKey= (query) and X-Api-Key (header).
+// The header approach keeps the key out of server logs, proxy logs,
+// and browser history entirely.
+function newsApiFetch(url) {
+  return fetch(url, {
+    headers: { 'X-Api-Key': process.env.NEWS_APIKEY },
+  });
 }
 
 // ── Map a raw NewsAPI article object to our Mongoose schema ───────────────────
@@ -44,7 +53,7 @@ function mapArticle(raw, category) {
 async function fetchCategory(category) {
   const url = buildUrl(category);
 
-  const response = await fetch(url);
+  const response = await newsApiFetch(url);
   if (!response.ok) {
     throw new Error(`NewsAPI HTTP ${response.status} for category=${category}`);
   }
