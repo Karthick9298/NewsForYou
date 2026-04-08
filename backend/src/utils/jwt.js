@@ -19,10 +19,15 @@ function verifyToken(token) {
 
 /** Cookie options for HTTP-only secure JWT */
 function getCookieOptions() {
+  const isProd = process.env.NODE_ENV === 'production';
+
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    // In production the frontend and backend are on different domains, so the
+    // cookie must be SameSite=None + Secure to be sent with cross-origin requests.
+    // In local dev (same origin, no HTTPS) SameSite=Lax is fine.
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
     path: '/',
   };
