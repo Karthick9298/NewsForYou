@@ -4,7 +4,7 @@
  * Schedules the NewsAPI article fetch pipeline to run every day at 7:00 AM
  * server local time.  Import this file once in server.js to activate the job.
  *
- * Cron expression: '0 7 * * *'
+ * Cron expression: '30 23 * * *'
  *   ┌──────── minute  (0)
  *   │ ┌────── hour    (7)
  *   │ │ ┌──── day of month (*)
@@ -19,7 +19,7 @@ import { fetchAndStoreAllArticles } from '../services/newsFetcher.service.js';
 // Schedule: every day at 07:00 AM
 // const CRON_EXPRESSION = '0 8 * * *';
 
-const CRON_EXPRESSION = '30 23 * * *';
+const CRON_EXPRESSION = '30 0 * * *';
 
 export function startNewsCron() {
   if (!cron.validate(CRON_EXPRESSION)) {
