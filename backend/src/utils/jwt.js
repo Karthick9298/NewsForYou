@@ -19,8 +19,6 @@ function verifyToken(token) {
 
 /** Cookie options for HTTP-only secure JWT */
 function getCookieOptions() {
-  const isProd = process.env.NODE_ENV === 'production';
-
   return {
     httpOnly: true,
     // In production the frontend and backend are on different domains, so the

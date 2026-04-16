@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Mail, ArrowRight, Loader2, ChevronLeft, Check,
-  ShieldCheck, Newspaper, Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import nfuLogo from '@/assets/NFU_logo.png';
 import OTPInput from '@/components/OTPInput';
+import AuthLeftPanel from '@/components/AuthLeftPanel';
+import ErrorBanner from '@/components/ErrorBanner';
 import { ALL_INTERESTS, NOTIFICATION_OPTIONS } from '@/lib/constants';
 
 const STEP = { EMAIL: 1, OTP: 2, INTERESTS: 3, NOTIFICATION: 4 };
@@ -46,57 +48,6 @@ function StepBar({ current }) {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-/* ── Left decorative panel ───────────────────────────────────────────────────── */
-function LeftPanel() {
-  const { user } = useAuth();
-  return (
-    <div className="hidden lg:flex lg:w-[46%] bg-[#0a0a0a] relative overflow-hidden flex-col justify-between p-10 xl:p-14">
-      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-amber-600/15 blur-[100px] pointer-events-none" />
-      <div className="absolute inset-0 opacity-[0.035]"
-        style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-
-      <div className="relative z-10">
-        <Link to={user ? '/dashboard' : '/'}>
-          <img src={nfuLogo} alt="NewsForYou" className="h-16 w-auto" />
-        </Link>
-      </div>
-
-      <div className="relative z-10 space-y-8">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-4">Join NewsForYou</p>
-          <h2 className="text-3xl xl:text-4xl font-bold text-white leading-tight font-serif">
-            News that fits<br />
-            <span className="text-primary">your life.</span>
-          </h2>
-          <p className="mt-4 text-[#9ca3af] leading-relaxed text-sm xl:text-base">
-            Set up your personalised digest in under a minute. Pick your topics, choose your time — done.
-          </p>
-        </div>
-        <div className="space-y-3">
-          {[
-            { icon: Sparkles, text: 'AI picks stories you actually care about' },
-            { icon: ShieldCheck, text: 'Secure OTP — no password to remember' },
-            { icon: Newspaper, text: 'One digest, every day, perfectly timed' },
-          ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
-                <Icon className="w-4 h-4 text-primary" />
-              </div>
-              <span className="text-sm text-[#d1d5db]">{text}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="relative z-10 border-l-2 border-primary/40 pl-4">
-        <p className="text-sm text-[#9ca3af] italic">"Setup took 30 seconds. The digest is brilliant."</p>
-        <p className="text-xs text-[#6b7280] mt-1">— Beta user, March 2026</p>
-      </div>
     </div>
   );
 }
@@ -190,16 +141,9 @@ export function RegisterPage() {
     finally { setIsLoading(false); }
   }
 
-  const ErrorBanner = ({ msg }) => msg ? (
-    <div className="flex items-start gap-2.5 text-sm bg-destructive/10 border border-destructive/25 text-destructive-foreground rounded-xl px-3.5 py-3">
-      <span className="text-base leading-none mt-px">⚠</span>
-      <span className="leading-snug">{msg}</span>
-    </div>
-  ) : null;
-
   return (
     <div className="min-h-screen flex bg-background">
-      <LeftPanel />
+      <AuthLeftPanel variant="register" />
 
       {/* ── Right panel ─────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-h-screen overflow-y-auto">

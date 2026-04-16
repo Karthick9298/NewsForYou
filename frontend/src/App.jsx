@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LoadingProvider } from './context/LoadingContext';
+import { BookmarkProvider } from './context/BookmarkContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import PageTransition from './components/PageTransition';
@@ -15,7 +16,8 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <LoadingProvider>
+        <BookmarkProvider>
+          <LoadingProvider>
           <PageTransition>
             <Routes>
               <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
@@ -40,7 +42,8 @@ function App() {
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </PageTransition>
-        </LoadingProvider>
+          </LoadingProvider>
+        </BookmarkProvider>
       </AuthProvider>
     </BrowserRouter>
   );

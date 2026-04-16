@@ -1,4 +1,4 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -6,6 +6,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { useBookmarks } from '@/context/BookmarkContext';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -24,7 +25,10 @@ function formatDate(dateStr) {
  * @param {function}    onClose  - Called when the dialog should close
  */
 function ArticleModal({ article, open, onClose }) {
+  const { bookmarkedIds, toggleBookmark } = useBookmarks();
   if (!article) return null;
+
+  const isBookmarked = bookmarkedIds.has(article._id);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -72,7 +76,7 @@ function ArticleModal({ article, open, onClose }) {
           )}
         </div>
 
-        <div className="pt-2 border-t border-border">
+        <div className="pt-2 border-t border-border flex items-center justify-between">
           <a
             href={article.url}
             target="_blank"
@@ -82,6 +86,21 @@ function ArticleModal({ article, open, onClose }) {
             <ExternalLink className="w-4 h-4" />
             Read full article
           </a>
+
+          <button
+            onClick={() => toggleBookmark(article)}
+            className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors px-3 py-1.5 rounded-lg border
+              ${isBookmarked
+                ? 'text-primary border-primary/40 bg-primary/10 hover:bg-primary/20'
+                : 'text-muted-foreground border-border hover:text-foreground hover:bg-muted/60'
+              }`}
+          >
+            {isBookmarked ? (
+              <><BookmarkCheck className="w-4 h-4" /> Saved</>
+            ) : (
+              <><Bookmark className="w-4 h-4" /> Save</>
+            )}
+          </button>
         </div>
       </DialogContent>
     </Dialog>

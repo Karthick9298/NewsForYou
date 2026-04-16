@@ -27,6 +27,12 @@ const userSchema = new mongoose.Schema(
       enum: ['morning', 'night', null],
       default: null,
     },
+    bookmarks: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'NewsArticle',
+      },
+    ],
   },
   { timestamps: true }
 );

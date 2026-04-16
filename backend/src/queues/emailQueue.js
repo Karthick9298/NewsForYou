@@ -14,6 +14,7 @@ emailQueue.on('error', (err) => {
  * @param {string} otp    - Plain-text OTP (sent inside email body)
  */
 async function addOTPEmailJob(email, otp) {
+  console.log(`[Developement] otp is sent for email ${email}`)
   await emailQueue.add(
     'send-otp',
     { email, otp },
@@ -26,4 +27,24 @@ async function addOTPEmailJob(email, otp) {
   );
 }
 
-export { emailQueue, addOTPEmailJob };
+/**
+ * Add a daily reminder email job to the queue.
+ *
+ * @param {string} email              - Recipient email address
+ * @param {'morning' | 'night'} timePref - Determines greeting in the email
+ */
+async function addDigestEmailJob(email, timePref) {
+  console.log(`[Developement] Remainder email is sent for email ${email}`)
+  await emailQueue.add(
+    'send-digest',
+    { email, timePref },
+    {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 3000 },
+      removeOnComplete: true,
+      removeOnFail: 50,
+    }
+  );
+}
+
+export { emailQueue, addOTPEmailJob, addDigestEmailJob };

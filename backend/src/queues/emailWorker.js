@@ -47,6 +47,76 @@ function buildOTPEmailHTML(otp) {
 </html>`;
 }
 
+/* ─── Reminder email ────────────────────────────────────────────────────────── */
+
+function buildReminderEmailHTML(greeting) {
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Your News is Waiting — NewsForYou</title>
+</head>
+<body style="margin:0;padding:0;background:#060608;font-family:'Segoe UI',Arial,sans-serif;color:#e5e7eb;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#060608;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#0c0c10;border-radius:16px;overflow:hidden;border:1px solid #1a1a2a;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0f0f14,#18181f);padding:28px 32px;border-bottom:2px solid #F59E0B;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <span style="font-size:26px;font-weight:800;color:#F59E0B;letter-spacing:0.3px;">NewsForYou</span>
+                    <div style="font-size:12px;color:#6b7280;margin-top:3px;">Your daily news reminder</div>
+                  </td>
+                  <td align="right" style="font-size:12px;color:#4b5563;vertical-align:bottom;">${today}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 32px 32px;text-align:center;">
+              <h1 style="margin:0 0 12px;font-size:24px;font-weight:700;color:#f9fafb;">${greeting}! 👋</h1>
+              <p style="margin:0 0 28px;font-size:15px;color:#9ca3af;line-height:1.65;">
+                Fresh news stories are waiting for you.<br/>
+                Catch up on today's top headlines across tech, sports, business, and more.
+              </p>
+              <a href="${frontendUrl}"
+                 style="display:inline-block;background:#F59E0B;color:#0f0f0f;font-size:15px;font-weight:700;
+                        text-decoration:none;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;">
+                Read Today's News →
+              </a>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#07070b;border-top:1px solid #1a1a2a;padding:20px 32px;text-align:center;">
+              <p style="margin:0 0 5px;font-size:12px;color:#4b5563;line-height:1.7;">
+                &copy; 2026 NewsForYou &mdash; Personalised news, delivered daily.
+              </p>
+              <p style="margin:0;font-size:11px;color:#374151;">
+                You're receiving this because you opted in to daily digest emails during registration.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 // Worker gets its own dedicated connection — separate from the Queue connection.
 const worker = new Worker(
   'email',
@@ -70,6 +140,32 @@ const worker = new Worker(
       });
 
       console.log(`[EmailWorker] OTP email sent to ${email}`);
+    }
+
+    if (job.name === 'send-digest') {
+      const { email, timePref } = job.data;
+
+      const greeting = timePref === 'morning' ? 'Good morning' : 'Good evening';
+      const subject  = timePref === 'morning'
+        ? '☀️ Good morning! Your news is waiting'
+        : '🌙 Good evening! Your news is waiting';
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[EmailWorker] Dev mode — reminder email for ${email} (${timePref})`);
+        return;
+      }
+
+      await getBrevo().transactionalEmails.sendTransacEmail({
+        subject,
+        htmlContent: buildReminderEmailHTML(greeting),
+        sender: {
+          name: process.env.BREVO_SENDER_NAME || 'NewsForYou',
+          email: process.env.BREVO_SENDER_EMAIL,
+        },
+        to: [{ email }],
+      });
+
+      console.log(`[EmailWorker] Reminder email sent to ${email}`);
     }
   },
   { connection: createRedisConnection() }

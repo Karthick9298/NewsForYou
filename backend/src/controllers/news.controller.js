@@ -1,5 +1,7 @@
+import mongoose from 'mongoose';
 import { fetchAndStoreAllArticles } from '../services/newsFetcher.service.js';
 import NewsArticle, { ARTICLE_CATEGORIES } from '../models/NewsArticle.js';
+import User from '../models/User.js';
 
 /**
  * POST /api/news/fetch
@@ -157,6 +159,64 @@ export async function getStats(req, res) {
     return res.status(200).json({ total, breakdown });
   } catch (err) {
     console.error('[news.controller] getStats error:', err);
+    return res.status(500).json({ message: err.message });
+  }
+}
+
+/**
+ * POST /api/news/bookmarks/:articleId
+ * Toggles the bookmark state for an article.
+ * Adds the article if not already bookmarked, removes it if it is.
+ * Returns { bookmarked: boolean }
+ */
+export async function toggleBookmark(req, res) {
+  try {
+    const { articleId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(articleId)) {
+      return res.status(400).json({ message: 'Invalid article ID.' });
+    }
+
+    const article = await NewsArticle.findById(articleId);
+    if (!article) {
+      return res.status(404).json({ message: 'Article not found.' });
+    }
+
+    const user = req.user;
+    const alreadyBookmarked = user.bookmarks.some(
+      (id) => id.toString() === articleId
+    );
+
+    if (alreadyBookmarked) {
+      user.bookmarks = user.bookmarks.filter(
+        (id) => id.toString() !== articleId
+      );
+    } else {
+      user.bookmarks.push(articleId);
+    }
+
+    await user.save();
+    return res.status(200).json({ bookmarked: !alreadyBookmarked });
+  } catch (err) {
+    console.error('[news.controller] toggleBookmark error:', err);
+    return res.status(500).json({ message: err.message });
+  }
+}
+
+/**
+ * GET /api/news/bookmarks
+ * Returns the authenticated user's bookmarked articles (newest first).
+ */
+export async function getBookmarks(req, res) {
+  try {
+    const user = await User.findById(req.user._id).populate({
+      path: 'bookmarks',
+      select: '-__v',
+    });
+
+    const articles = [...(user.bookmarks || [])].reverse();
+    return res.status(200).json({ articles });
+  } catch (err) {
+    console.error('[news.controller] getBookmarks error:', err);
     return res.status(500).json({ message: err.message });
   }
 }

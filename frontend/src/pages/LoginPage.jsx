@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, ArrowRight, Loader2, ChevronLeft, Newspaper, Sparkles, ShieldCheck } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, ChevronLeft, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,64 +8,10 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import nfuLogo from '@/assets/NFU_logo.png';
 import OTPInput from '@/components/OTPInput';
+import AuthLeftPanel from '@/components/AuthLeftPanel';
+import ErrorBanner from '@/components/ErrorBanner';
 
 const STEP = { EMAIL: 'email', OTP: 'otp' };
-
-/* ── Left decorative panel ───────────────────────────────────────────────────── */
-function LeftPanel() {
-  const { user } = useAuth();
-  return (
-    <div className="hidden lg:flex lg:w-[46%] bg-[#0a0a0a] relative overflow-hidden flex-col justify-between p-10 xl:p-14">
-      {/* Ambient glows */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-amber-600/15 blur-[100px] pointer-events-none" />
-      {/* Grid pattern */}
-      <div className="absolute inset-0 opacity-[0.035]"
-        style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-
-      {/* Logo */}
-      <div className="relative z-10">
-        <Link to={user ? '/dashboard' : '/'}>
-          <img src={nfuLogo} alt="NewsForYou" className="h-16 w-auto" />
-        </Link>
-      </div>
-
-      {/* Main copy */}
-      <div className="relative z-10 space-y-8">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary mb-4">Your Daily Digest</p>
-          <h2 className="text-3xl xl:text-4xl font-bold text-white leading-tight font-serif">
-            Your world,<br />
-            <span className="text-primary">curated</span> daily.
-          </h2>
-          <p className="mt-4 text-[#9ca3af] leading-relaxed text-sm xl:text-base">
-            Get a hand-picked digest of what matters most — delivered to your inbox at the exact time you choose.
-          </p>
-        </div>
-        <div className="space-y-3">
-          {[
-            { icon: Sparkles, text: 'AI-curated from thousands of sources' },
-            { icon: ShieldCheck, text: 'No password. Secure OTP login.' },
-            { icon: Newspaper, text: 'One clean digest. Zero noise.' },
-          ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
-                <Icon className="w-4 h-4 text-primary" />
-              </div>
-              <span className="text-sm text-[#d1d5db]">{text}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Testimonial */}
-      <div className="relative z-10 border-l-2 border-primary/40 pl-4">
-        <p className="text-sm text-[#9ca3af] italic">"The best newsletter I've ever subscribed to."</p>
-        <p className="text-xs text-[#6b7280] mt-1">— Early beta user</p>
-      </div>
-    </div>
-  );
-}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -120,7 +66,7 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <LeftPanel />
+      <AuthLeftPanel variant="login" />
 
       {/* ── Right panel ───────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-h-screen">
@@ -192,12 +138,7 @@ export function LoginPage() {
                     />
                   </div>
 
-                  {error && (
-                    <div className="flex items-start gap-2.5 text-sm bg-destructive/10 border border-destructive/25 text-destructive-foreground rounded-xl px-3.5 py-3">
-                      <span className="text-base leading-none mt-px">⚠</span>
-                      <span className="leading-snug">{error}</span>
-                    </div>
-                  )}
+                  <ErrorBanner msg={error} />
 
                   <Button type="submit" className="w-full h-12 gap-2 font-semibold rounded-xl text-sm" disabled={isLoading}>
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continue <ArrowRight className="w-4 h-4" /></>}
@@ -234,12 +175,7 @@ export function LoginPage() {
                     <OTPInput value={otp} onChange={setOtp} />
                   </div>
 
-                  {error && (
-                    <div className="flex items-start gap-2.5 text-sm bg-destructive/10 border border-destructive/25 text-destructive-foreground rounded-xl px-3.5 py-3">
-                      <span className="text-base leading-none mt-px">⚠</span>
-                      <span className="leading-snug">{error}</span>
-                    </div>
-                  )}
+                  <ErrorBanner msg={error} />
 
                   <Button type="submit" className="w-full h-12 gap-2 font-semibold rounded-xl text-sm" disabled={isLoading || otp.length !== 6}>
                     {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Verify &amp; Sign In <ArrowRight className="w-4 h-4" /></>}

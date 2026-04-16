@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { connectDB } from './src/config/db.js';
 import app from './src/app.js';
 import { startNewsCron } from './src/cron/newsCron.js';
+import { startDigestCron } from './src/cron/digestCron.js';
 
 // Start the BullMQ email worker (runs in same process, non-blocking)
 import './src/queues/emailWorker.js';
@@ -24,6 +25,9 @@ async function start() {
 
   // Start the daily 7 AM news fetch cron job
   startNewsCron();
+
+  // Start the morning (06:05 AM) and night (09:00 PM) digest email cron jobs
+  startDigestCron();
 
   app.listen(PORT, () => {
     console.log(`\n🚀  NewsForYou API running on http://localhost:${PORT}`);

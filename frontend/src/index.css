@@ -147,3 +147,159 @@ html {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ── NightWaitingCard keyframes ──────────────────────────────────────────── */
+@keyframes nfu-twinkle {
+  0%, 100% { opacity: 0.08; transform: scale(0.5); }
+  50%       { opacity: 1;    transform: scale(1.5); }
+}
+@keyframes nfu-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-14px); }
+}
+@keyframes nfu-glow-breathe {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(1.12); }
+}
+@keyframes nfu-orbit-cw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes nfu-orbit-ccw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes nfu-ripple {
+  0%   { transform: scale(0.85); opacity: 0.55; }
+  100% { transform: scale(2.6);  opacity: 0; }
+}
+@keyframes nfu-dawn {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 0.7; }
+}
+@keyframes nfu-slide-up {
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes nfu-scale-in {
+  0%   { opacity: 0; transform: scale(0.5) rotate(-20deg); }
+  100% { opacity: 1; transform: scale(1)   rotate(0deg); }
+}
+@keyframes nfu-shooting-star {
+  0%   { transform: translateX(0) translateY(0) rotate(-35deg); opacity: 1; width: 0px; }
+  40%  { width: 80px; opacity: 1; }
+  100% { transform: translateX(180px) translateY(90px) rotate(-35deg); opacity: 0; width: 80px; }
+}
+@keyframes nfu-text-glow {
+  0%, 100% { text-shadow: 0 0 8px rgba(251,191,36,.3); }
+  50%       { text-shadow: 0 0 24px rgba(251,191,36,.8), 0 0 48px rgba(251,191,36,.3); }
+}
+
+/* ── NightWaitingCard layout classes ─────────────────────────────────────── */
+.nwc-container {
+  position: relative; overflow: hidden; border-radius: 20px;
+  border: 1px solid rgba(245,158,11,.2);
+  background: linear-gradient(170deg,#06060f 0%,#0c0a1a 35%,#0f0a08 70%,#0a0600 100%);
+  min-height: 380px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 64px 32px;
+  animation: nfu-slide-up .7s cubic-bezier(.22,1,.36,1) both;
+}
+.nwc-glow-tr {
+  position: absolute; top: -60px; right: -60px; width: 320px; height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle,rgba(245,158,11,.1) 0%,transparent 65%);
+  animation: nfu-glow-breathe 6s ease-in-out infinite; pointer-events: none;
+}
+.nwc-glow-bl {
+  position: absolute; bottom: -80px; left: -60px; width: 360px; height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle,rgba(245,158,11,.07) 0%,transparent 65%);
+  animation: nfu-glow-breathe 7s 1s ease-in-out infinite; pointer-events: none;
+}
+.nwc-glow-center {
+  position: absolute; top: 30%; left: 30%; width: 160px; height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle,rgba(139,92,246,.06) 0%,transparent 70%);
+  animation: nfu-glow-breathe 8s 2s ease-in-out infinite; pointer-events: none;
+}
+.nwc-shoot-1 {
+  position: absolute; top: 18%; left: 5%; height: 1.5px; border-radius: 2px;
+  background: linear-gradient(to right,transparent,rgba(252,211,77,.9),transparent);
+  pointer-events: none; animation: nfu-shooting-star 5s ease-in-out infinite;
+}
+.nwc-shoot-2 {
+  position: absolute; top: 28%; left: 55%; height: 1.5px; border-radius: 2px;
+  background: linear-gradient(to right,transparent,rgba(224,231,255,.8),transparent);
+  pointer-events: none; animation: nfu-shooting-star 5s 2.5s ease-in-out infinite;
+}
+.nwc-moon-glow {
+  position: absolute; top: 16px; right: 28px; width: 48px; height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle,rgba(253,230,138,.25) 0%,rgba(253,230,138,.05) 60%,transparent 80%);
+  box-shadow: 0 0 24px 8px rgba(253,230,138,.12);
+  animation: nfu-glow-breathe 4s ease-in-out infinite; pointer-events: none;
+}
+.nwc-moon-core {
+  position: absolute; top: 22px; right: 34px; width: 26px; height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle,rgba(253,230,138,.5) 0%,rgba(253,230,138,.1) 80%);
+  pointer-events: none;
+}
+.nwc-horizon {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 90px;
+  background: linear-gradient(to top,rgba(245,158,11,.22),rgba(245,158,11,.06),transparent);
+  animation: nfu-dawn 5s ease-in-out infinite; pointer-events: none;
+}
+.nwc-horizon-line {
+  position: absolute; bottom: 0; left: 15%; right: 15%; height: 1px;
+  background: linear-gradient(to right,transparent,rgba(245,158,11,.5),transparent);
+  pointer-events: none;
+}
+.nwc-clock-float {
+  position: relative; margin-bottom: 32px;
+  animation: nfu-float 4.5s ease-in-out infinite;
+}
+.nwc-ripple-1 { position: absolute; inset: -16px; border-radius: 26px; border: 1px solid rgba(245,158,11,.4); animation: nfu-ripple 2.8s ease-out 0s    infinite; }
+.nwc-ripple-2 { position: absolute; inset: -16px; border-radius: 26px; border: 1px solid rgba(245,158,11,.3); animation: nfu-ripple 2.8s ease-out .93s  infinite; }
+.nwc-ripple-3 { position: absolute; inset: -16px; border-radius: 26px; border: 1px solid rgba(245,158,11,.2); animation: nfu-ripple 2.8s ease-out 1.86s infinite; }
+.nwc-orbit-outer { position: absolute; inset: -8px; border-radius: 22px; border: 1px dashed rgba(245,158,11,.3);   animation: nfu-orbit-cw  14s linear infinite; }
+.nwc-orbit-inner { position: absolute; inset:  6px; border-radius: 14px; border: 1px dashed rgba(167,139,250,.25); animation: nfu-orbit-ccw  9s linear infinite; }
+.nwc-icon-box {
+  position: relative; z-index: 1; width: 72px; height: 72px; border-radius: 20px;
+  background: linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.04));
+  border: 1px solid rgba(245,158,11,.45);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 40px rgba(245,158,11,.25), 0 0 80px rgba(245,158,11,.1), inset 0 0 24px rgba(245,158,11,.06);
+  animation: nfu-scale-in .7s cubic-bezier(.34,1.56,.64,1) .1s both;
+}
+.nwc-clock-icon {
+  width: 34px; height: 34px; color: #fbbf24;
+  filter: drop-shadow(0 0 10px rgba(251,191,36,.7)) drop-shadow(0 0 3px rgba(251,191,36,1));
+  animation: nfu-orbit-cw 10s linear infinite;
+}
+.nwc-heading {
+  position: relative; z-index: 1;
+  font-size: 22px; font-weight: 700; color: #f9fafb;
+  margin-bottom: 12px; letter-spacing: -.01em;
+  animation: nfu-slide-up .6s .2s ease-out both;
+}
+.nwc-subtext {
+  position: relative; z-index: 1; text-align: center;
+  font-size: 14px; color: rgba(156,163,175,.9);
+  max-width: 340px; line-height: 1.7; margin: 0 auto 24px;
+  animation: nfu-slide-up .6s .38s ease-out both;
+}
+.nwc-chips-row {
+  position: relative; z-index: 1;
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  animation: nfu-slide-up .6s .52s ease-out both;
+}
+.nwc-chip {
+  font-size: 11px; font-weight: 500;
+  padding: 4px 10px; border-radius: 20px; transition: all .3s;
+}
+.nwc-chip-active   { background: rgba(245,158,11,.18); border: 1px solid rgba(245,158,11,.45); color: #fbbf24; box-shadow: 0 0 12px rgba(245,158,11,.2); }
+.nwc-chip-inactive { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); color: rgba(156,163,175,.5); }
+.nwc-text-glow         { animation: nfu-text-glow 2.5s ease-in-out infinite; }
+.nwc-text-glow-delayed { animation: nfu-text-glow 2.5s .4s ease-in-out infinite; }

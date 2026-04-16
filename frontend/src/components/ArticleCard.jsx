@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Newspaper } from 'lucide-react';
+import { Newspaper, Bookmark, BookmarkCheck } from 'lucide-react';
+import { useBookmarks } from '@/context/BookmarkContext';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -19,12 +20,36 @@ function formatDate(dateStr) {
 function ArticleCard({ article, onClick }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const { bookmarkedIds, toggleBookmark } = useBookmarks();
+  const isBookmarked = bookmarkedIds.has(article._id);
+
+  function handleBookmarkClick(e) {
+    e.stopPropagation();
+    toggleBookmark(article);
+  }
 
   return (
     <div
       onClick={() => onClick(article)}
-      className="group cursor-pointer bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 flex flex-col"
+      className="group cursor-pointer bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 flex flex-col relative"
     >
+      {/* Bookmark button */}
+      <button
+        onClick={handleBookmarkClick}
+        className={`absolute top-2.5 right-2.5 z-10 p-1.5 rounded-lg transition-all duration-200 
+          ${isBookmarked
+            ? 'bg-primary/20 border border-primary/40 text-primary opacity-100'
+            : 'bg-background/80 border border-border text-muted-foreground opacity-0 group-hover:opacity-100'
+          } backdrop-blur-sm hover:scale-110`}
+        aria-label={isBookmarked ? 'Remove bookmark' : 'Bookmark article'}
+      >
+        {isBookmarked ? (
+          <BookmarkCheck className="w-3.5 h-3.5" />
+        ) : (
+          <Bookmark className="w-3.5 h-3.5" />
+        )}
+      </button>
+
       {/* Thumbnail */}
       {article.imageUrl && !imageError ? (
         <div className="aspect-video overflow-hidden shrink-0 relative bg-muted">
