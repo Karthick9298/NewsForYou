@@ -1,20 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBookmarks } from '@/context/BookmarkContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Bookmark, Newspaper } from 'lucide-react';
+import { LogOut, Bookmark, Newspaper, Pencil, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import nfuLogo from '@/assets/NFU_logo.png';
 import ArticleCard from '@/components/ArticleCard';
 import ArticleModal from '@/components/ArticleModal';
 import FeedSkeleton from '@/components/FeedSkeleton';
 import NightWaitingCard from '@/components/NightWaitingCard';
-import { INTEREST_META, DEFAULT_INTEREST_META } from '@/lib/constants';
+import { ALL_INTERESTS, INTEREST_META, DEFAULT_INTEREST_META } from '@/lib/constants';
 
 /* ── Main dashboard ───────────────────────────────────────────────────────── */
 export function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, setUser, logout } = useAuth();
   const { bookmarkedArticles, bookmarkedIds } = useBookmarks();
   const navigate = useNavigate();
 
@@ -23,22 +24,88 @@ export function DashboardPage() {
   const [isFallback, setIsFallback] = useState(false);
   const [feedError, setFeedError] = useState('');
   const [selectedArticle, setSelectedArticle] = useState(null);
+  const [isInterestsOpen, setIsInterestsOpen] = useState(false);
+  const [selectedInterests, setSelectedInterests] = useState([]);
+  const [interestsError, setInterestsError] = useState('');
+  const [isSavingInterests, setIsSavingInterests] = useState(false);
+
+  // Measures the fixed header's actual height so main content never overlaps it,
+  // even on mobile where the two-row interest section makes the header taller.
+  const headerRef = useRef(null);
+  const [headerHeight, setHeaderHeight] = useState(56);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setHeaderHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
+    fetchFeed();
+  }, []);
+
+  useEffect(() => {
+    if (user?.interests?.length) {
+      setSelectedInterests(user.interests);
+    }
+  }, [user]);
+
+  function fetchFeed() {
     api.get('/api/news/feed')
       .then((data) => {
         setFeedGroups(data.groups ?? null); // null means backend returned no today's articles
         setIsFallback(data.fallback ?? false);
+        setFeedError('');
       })
       .catch((err) => {
         setFeedGroups(null);
         setFeedError(err.message);
       });
-  }, []);
+  }
 
   async function handleLogout() {
     await logout();
     navigate('/', { replace: true });
+  }
+
+  function openInterests() {
+    setSelectedInterests(interests);
+    setInterestsError('');
+    setIsInterestsOpen(true);
+  }
+
+  function toggleInterest(id) {
+    setSelectedInterests((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 4) return prev;
+      return [...prev, id];
+    });
+  }
+
+  async function handleSaveInterests() {
+    setInterestsError('');
+    if (selectedInterests.length < 1) {
+      setInterestsError('Please select at least 1 interest.');
+      return;
+    }
+    setIsSavingInterests(true);
+    try {
+      const data = await api.post('/api/auth/register/interests', { interests: selectedInterests });
+      setUser((prev) => ({
+        ...prev,
+        interests: data.interests ?? selectedInterests,
+      }));
+      setIsInterestsOpen(false);
+      setFeedGroups(undefined);
+      setIsFallback(false);
+      setFeedError('');
+      fetchFeed();
+    } catch (err) {
+      setInterestsError(err.message);
+    } finally {
+      setIsSavingInterests(false);
+    }
   }
 
   const interests = user?.interests || [];
@@ -46,7 +113,7 @@ export function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* ── Top row: logo | view toggle | sign-out ───────────── */}
@@ -58,7 +125,7 @@ export function DashboardPage() {
               <button
                 onClick={() => setView('feed')}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200
-                  ${ view === 'feed'
+                  ${view === 'feed'
                     ? 'bg-background border border-border/80 text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                   }`}
@@ -69,7 +136,7 @@ export function DashboardPage() {
               <button
                 onClick={() => setView('bookmarks')}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200
-                  ${ view === 'bookmarks'
+                  ${view === 'bookmarks'
                     ? 'bg-background border border-border/80 text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
                   }`}
@@ -78,7 +145,7 @@ export function DashboardPage() {
                 Saved
                 {bookmarkedIds.size > 0 && (
                   <span className={`ml-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold inline-flex items-center justify-center
-                    ${ view === 'bookmarks' ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground' }`}>
+                    ${view === 'bookmarks' ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
                     {bookmarkedIds.size}
                   </span>
                 )}
@@ -96,35 +163,79 @@ export function DashboardPage() {
             </Button>
           </div>
 
-          {/* ── Interest chips row (feed view only) ─────────────── */}
+          {/* ── Interest chips section (feed view only) ─────────────── */}
           {view === 'feed' && interests.length > 0 && (
-            <div className="flex items-center gap-2 pb-2.5 overflow-x-auto scrollbar-hide border-t border-border/30 pt-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 shrink-0 pr-1">
-                Topics
-              </span>
-              {interests.map((cat) => {
-                const meta = INTEREST_META[cat] ?? DEFAULT_INTEREST_META;
-                const Icon = meta.icon;
-                return (
-                  <div
-                    key={cat}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full shrink-0 ${meta.bg} border ${meta.border} ${meta.color} text-xs font-medium`}
+            <div className="border-t border-border/30 pt-2 pb-2.5">
+
+              {/* ── Mobile / tablet: chips scroll on row 1, button pinned on row 2 ── */}
+              <div className="md:hidden">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 shrink-0 pr-1 select-none">
+                    Topics
+                  </span>
+                  {interests.map((cat) => {
+                    const meta = INTEREST_META[cat] ?? DEFAULT_INTEREST_META;
+                    const Icon = meta.icon;
+                    return (
+                      <div
+                        key={cat}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full shrink-0 ${meta.bg} border ${meta.border} ${meta.color} text-xs font-medium`}
+                      >
+                        <Icon className="w-3 h-3" />
+                        {meta.label}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Update button — always fully visible on its own row */}
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    type="button"
+                    onClick={openInterests}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/70 bg-muted/40 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
                   >
-                    <Icon className="w-3 h-3" />
-                    {meta.label}
-                  </div>
-                );
-              })}
+                    <Pencil className="w-3 h-3" />
+                    Update interests
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Desktop: single centered row (original) ─────────────────── */}
+              <div className="hidden md:flex items-center justify-center gap-2 overflow-x-auto scrollbar-hide">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 shrink-0 pr-1 select-none">
+                  Topics
+                </span>
+                {interests.map((cat) => {
+                  const meta = INTEREST_META[cat] ?? DEFAULT_INTEREST_META;
+                  const Icon = meta.icon;
+                  return (
+                    <div
+                      key={cat}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full shrink-0 ${meta.bg} border ${meta.border} ${meta.color} text-xs font-medium`}
+                    >
+                      <Icon className="w-3 h-3" />
+                      {meta.label}
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={openInterests}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/70 bg-muted/40 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors shrink-0"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Update interests
+                </button>
+              </div>
+
             </div>
           )}
 
         </div>
       </header>
 
-      {/* Dynamic top padding: taller when the chips row is visible */}
-      <main className={`pb-16 transition-[padding] duration-200 ${
-        view === 'feed' && interests.length > 0 ? 'pt-[7.5rem]' : 'pt-16'
-      }`}>
+      {/* Padding-top = real header height measured live — never overlaps on any screen size */}
+      <main className="pb-16" style={{ paddingTop: headerHeight }}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
 
           {/* ── View: Feed or Bookmarks ─────────────────────────────────── */}
@@ -156,54 +267,54 @@ export function DashboardPage() {
               </div>
             )
           ) : (
-          /* ── News feed ───────────────────────────────────────────────────────── */
-          feedGroups === undefined ? (
-            /* Loading — one skeleton row per interest (or 2 generic rows if no interests yet) */
-            <div className="space-y-10">
-              {(interests.length > 0 ? interests : ['_a', '_b']).map((cat) => (
-                <section key={cat}>
-                  <div className="h-7 w-36 rounded-full bg-muted animate-pulse mb-5" />
-                  <FeedSkeleton />
-                </section>
-              ))}
-            </div>
-          ) : feedError ? (
-            <div className="bg-card border border-destructive/30 rounded-2xl p-8 text-center">
-              <p className="text-sm text-destructive font-medium">{feedError}</p>
-            </div>
-          ) : feedGroups === null ? (
-            /* No articles for today — cron hasn't run yet (midnight → 6 AM window) */
-            <NightWaitingCard />
-          ) : (
-            /* Articles grouped by category — render every group the backend returned */
-            <div className="space-y-10">
-              {Object.entries(feedGroups).map(([cat, articles]) => {
-                if (!articles.length) return null;
-                const meta = INTEREST_META[cat] ?? DEFAULT_INTEREST_META;
-                const Icon = meta.icon;
-                return (
+            /* ── News feed ───────────────────────────────────────────────────────── */
+            feedGroups === undefined ? (
+              /* Loading — one skeleton row per interest (or 2 generic rows if no interests yet) */
+              <div className="space-y-10">
+                {(interests.length > 0 ? interests : ['_a', '_b']).map((cat) => (
                   <section key={cat}>
-                    {/* Section header */}
-                    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${meta.bg} border ${meta.border} mb-5`}>
-                      <Icon className={`w-4 h-4 ${meta.color}`} />
-                      <span className={`text-sm font-semibold ${meta.color}`}>{meta.label}</span>
-                      {isFallback && <span className="text-xs font-normal opacity-70">(trending)</span>}
-                    </div>
-                    {/* Article cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {articles.map((article) => (
-                        <ArticleCard
-                          key={article._id}
-                          article={article}
-                          onClick={setSelectedArticle}
-                        />
-                      ))}
-                    </div>
+                    <div className="h-7 w-36 rounded-full bg-muted animate-pulse mb-5" />
+                    <FeedSkeleton />
                   </section>
-                );
-              })}
-            </div>
-          )
+                ))}
+              </div>
+            ) : feedError ? (
+              <div className="bg-card border border-destructive/30 rounded-2xl p-8 text-center">
+                <p className="text-sm text-destructive font-medium">{feedError}</p>
+              </div>
+            ) : feedGroups === null ? (
+              /* No articles for today — cron hasn't run yet (midnight → 6 AM window) */
+              <NightWaitingCard />
+            ) : (
+              /* Articles grouped by category — render every group the backend returned */
+              <div className="space-y-10">
+                {Object.entries(feedGroups).map(([cat, articles]) => {
+                  if (!articles.length) return null;
+                  const meta = INTEREST_META[cat] ?? DEFAULT_INTEREST_META;
+                  const Icon = meta.icon;
+                  return (
+                    <section key={cat}>
+                      {/* Section header */}
+                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${meta.bg} border ${meta.border} mb-5`}>
+                        <Icon className={`w-4 h-4 ${meta.color}`} />
+                        <span className={`text-sm font-semibold ${meta.color}`}>{meta.label}</span>
+                        {isFallback && <span className="text-xs font-normal opacity-70">(trending)</span>}
+                      </div>
+                      {/* Article cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {articles.map((article) => (
+                          <ArticleCard
+                            key={article._id}
+                            article={article}
+                            onClick={setSelectedArticle}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            )
           )} {/* end view ternary */}
 
         </div>
@@ -215,6 +326,61 @@ export function DashboardPage() {
         open={!!selectedArticle}
         onClose={() => setSelectedArticle(null)}
       />
+
+      <Dialog open={isInterestsOpen} onOpenChange={setIsInterestsOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Update your interests</DialogTitle>
+            <DialogDescription>Pick 1 to 4 topics to personalize your feed.</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            {ALL_INTERESTS.map(({ id, label, icon: Icon, color, iconColor, border }) => {
+              const isSelected = selectedInterests.includes(id);
+              const isDisabled = !isSelected && selectedInterests.length >= 4;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => toggleInterest(id)}
+                  className={`relative flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all duration-200
+                    ${isSelected ? `bg-gradient-to-br ${color} ${border} border` : 'border-border/60 bg-background/40 hover:border-border hover:bg-background/80'}
+                    ${isDisabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors
+                    ${isSelected ? 'bg-white/10' : 'bg-muted'}`}>
+                    <Icon className={`w-4 h-4 transition-colors ${isSelected ? iconColor : 'text-muted-foreground'}`} />
+                  </div>
+                  <span className={`text-sm font-semibold transition-colors ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {label}
+                  </span>
+                  {isSelected && (
+                    <div className="absolute top-2 right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow-sm">
+                      <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {interestsError && (
+            <p className="text-xs text-destructive font-medium">{interestsError}</p>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={handleSaveInterests}
+              disabled={isSavingInterests || selectedInterests.length < 1}
+              className="gap-2"
+            >
+              {isSavingInterests ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save interests'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

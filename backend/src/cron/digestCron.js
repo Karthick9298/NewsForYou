@@ -17,21 +17,21 @@ import { addDigestEmailJob } from '../queues/emailQueue.js';
  *
  * @param {'morning' | 'night'} timePref
  */
-async function sendReminderToUsers(timePref) {
-  console.log(`[DigestCron] ▶ ${timePref} reminder triggered at ${new Date().toISOString()}`);
+// async function sendReminderToUsers(timePref) {
+//   console.log(`[DigestCron] ▶ ${timePref} reminder triggered at ${new Date().toISOString()}`);
 
-  const users = await User
-    .find({ isRegistered: true, notificationTime: timePref }, 'email')
-    .lean();
+//   const users = await User
+//     .find({ isRegistered: true, notificationTime: timePref }, 'email')
+//     .lean();
 
-  console.log(`[DigestCron] Queueing reminder for ${users.length} ${timePref} user(s)`);
+//   console.log(`[DigestCron] Queueing reminder for ${users.length} ${timePref} user(s)`);
 
-  for (const user of users) {
-    await addDigestEmailJob(user.email, timePref);
-  }
+//   for (const user of users) {
+//     await addDigestEmailJob(user.email, timePref);
+//   }
 
-  console.log(`[DigestCron] ${timePref} reminder queued for ${users.length} user(s)`);
-}
+//   console.log(`[DigestCron] ${timePref} reminder queued for ${users.length} user(s)`);
+// }
 
 
 /* ── Schedule two cron jobs ─────────────────────────────────────────────────── */
