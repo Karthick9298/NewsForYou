@@ -11,7 +11,7 @@
 import NewsArticle, { ARTICLE_CATEGORIES } from '../models/NewsArticle.js';
 
 const BASE_URL = 'https://newsapi.org/v2/top-headlines';
-const PAGE_SIZE = 15; // NewsAPI max on free tier per request
+const PAGE_SIZE = 20; // NewsAPI max on free tier per request
 
 // ── Build the request URL for a given category (no key in URL) ───────────────
 function buildUrl(category) {
@@ -66,7 +66,7 @@ async function fetchCategory(category) {
 
   // Drop articles that NewsAPI marks as removed
   const valid = (data.articles || []).filter(
-    (a) => a.url && !a.url.includes('removed.com') && a.title !== '[Removed]'
+    (a) => a.url && a.urlToImage && !a.url.includes('removed.com') && a.title !== '[Removed]'
   );
 
   return valid;

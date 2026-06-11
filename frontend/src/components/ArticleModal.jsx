@@ -1,4 +1,5 @@
-import { ExternalLink, Bookmark, BookmarkCheck } from 'lucide-react';
+import { useState } from 'react';
+import { ExternalLink, Bookmark, BookmarkCheck, Share2, Copy } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,20 @@ function ArticleModal({ article, open, onClose }) {
   if (!article) return null;
 
   const isBookmarked = bookmarkedIds.has(article._id);
+
+  // ── Share / copy-link logic ──────────────────────────────────────────
+  const [copied, setCopied] = useState(false);
+
+  async function shareArticle() {
+    const shareData = { title: article.title, url: article.url };
+    if (navigator.share) {
+      try { await navigator.share(shareData); } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(article.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -76,7 +91,7 @@ function ArticleModal({ article, open, onClose }) {
           )}
         </div>
 
-        <div className="pt-2 border-t border-border flex items-center justify-between">
+        <div className="pt-2 border-t border-border flex items-center justify-between gap-2 flex-wrap">
           <a
             href={article.url}
             target="_blank"
@@ -87,20 +102,39 @@ function ArticleModal({ article, open, onClose }) {
             Read full article
           </a>
 
-          <button
-            onClick={() => toggleBookmark(article)}
-            className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors px-3 py-1.5 rounded-lg border
-              ${isBookmarked
-                ? 'text-primary border-primary/40 bg-primary/10 hover:bg-primary/20'
-                : 'text-muted-foreground border-border hover:text-foreground hover:bg-muted/60'
-              }`}
-          >
-            {isBookmarked ? (
-              <><BookmarkCheck className="w-4 h-4" /> Saved</>
-            ) : (
-              <><Bookmark className="w-4 h-4" /> Save</>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Share button */}
+            <button
+              onClick={shareArticle}
+              className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors px-3 py-1.5 rounded-lg border
+                ${ copied
+                  ? 'text-green-500 border-green-500/40 bg-green-500/10'
+                  : 'text-muted-foreground border-border hover:text-foreground hover:bg-muted/60'
+                }`}
+            >
+              {copied ? (
+                <><Copy className="w-4 h-4" /> Copied!</>
+              ) : (
+                <><Share2 className="w-4 h-4" /> Share</>
+              )}
+            </button>
+
+            {/* Bookmark button */}
+            <button
+              onClick={() => toggleBookmark(article)}
+              className={`inline-flex items-center gap-1.5 text-sm font-medium transition-colors px-3 py-1.5 rounded-lg border
+                ${isBookmarked
+                  ? 'text-primary border-primary/40 bg-primary/10 hover:bg-primary/20'
+                  : 'text-muted-foreground border-border hover:text-foreground hover:bg-muted/60'
+                }`}
+            >
+              {isBookmarked ? (
+                <><BookmarkCheck className="w-4 h-4" /> Saved</>
+              ) : (
+                <><Bookmark className="w-4 h-4" /> Save</>
+              )}
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

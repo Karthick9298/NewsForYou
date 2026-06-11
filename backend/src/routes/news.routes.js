@@ -6,7 +6,8 @@ const router = Router();
 
 // POST /api/news/fetch  — manually trigger the NewsAPI fetch pipeline (testing)
 
-if(process.env.NODE_ENV === 'development')router.post('/fetch', triggerFetch); // onl in development
+// if (process.env.NODE_ENV === 'development')
+router.post('/fetch', triggerFetch); // only in development
 
 
 // GET  /api/news/articles — list stored articles with optional ?category=&page=&limit= (protected)

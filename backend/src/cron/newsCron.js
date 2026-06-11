@@ -16,26 +16,29 @@
 import cron from 'node-cron';
 import { fetchAndStoreAllArticles } from '../services/newsFetcher.service.js';
 
-// Schedule: every day at 07:00 AM
-// const CRON_EXPRESSION = '0 8 * * *';
-
-const CRON_EXPRESSION = '30 0 * * *';
+// Schedule: every day at 07:00 AM & 12:00 pm
 
 export function startNewsCron() {
-  if (!cron.validate(CRON_EXPRESSION)) {
-    console.error('[NewsCron] Invalid cron expression — job NOT scheduled.');
-    return;
-  }
+  const runJob = async () => {
+    console.log(`[NewsCron] 🗞 Fetch triggered at ${new Date().toISOString()}`);
 
-  cron.schedule(CRON_EXPRESSION, async () => {
-    console.log(`[NewsCron] 🗞  Daily fetch triggered at ${new Date().toISOString()}`);
     try {
       const summary = await fetchAndStoreAllArticles();
-      console.log('[NewsCron] Daily fetch complete:', JSON.stringify(summary));
+      console.log('[NewsCron] Fetch complete:', JSON.stringify(summary));
     } catch (err) {
-      console.error('[NewsCron] Daily fetch failed:', err.message);
+      console.error('[NewsCron] Fetch failed:', err.message);
     }
+  };
+
+  // 6:00 AM IST
+  cron.schedule('0 6 * * *', runJob, {
+    timezone: 'Asia/Kolkata',
   });
 
-  console.log(`📰  News cron job scheduled — runs daily at 05:00 AM (${CRON_EXPRESSION})`);
+  // 12:00 PM IST (Noon)
+  cron.schedule('0 12 * * *', runJob, {
+    timezone: 'Asia/Kolkata',
+  });
+
+  console.log('📰 News cron jobs scheduled — 06:00 AM IST and 12:00 PM IST');
 }

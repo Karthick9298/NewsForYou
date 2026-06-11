@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useBookmarks } from '@/context/BookmarkContext';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Bookmark, Newspaper, Pencil, Check, Loader2 } from 'lucide-react';
+import { LogOut, Bookmark, Newspaper, Pencil, Check, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
@@ -28,6 +28,50 @@ export function DashboardPage() {
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [interestsError, setInterestsError] = useState('');
   const [isSavingInterests, setIsSavingInterests] = useState(false);
+
+  // ── Show more: per-category extra articles loaded on demand ────────────────
+  // extras[cat]   = array of additional articles fetched beyond the initial feed
+  // moreLoading[cat] = true while that category's next page is fetching
+  // morePage[cat]    = next page number to request (starts at 2)
+  // noMore[cat]      = true once the backend returns an empty page
+  const [extras, setExtras] = useState({});
+  const [moreLoading, setMoreLoading] = useState({});
+  const [morePage, setMorePage] = useState({});
+  const [noMore, setNoMore] = useState({});
+
+  async function loadMoreForCategory(cat, currentFeedArticles) {
+    const page = morePage[cat] ?? 2;
+    setMoreLoading((prev) => ({ ...prev, [cat]: true }));
+    try {
+      const data = await api.get(`/api/news/articles?category=${cat}&limit=3&page=${page}`);
+      const incoming = data.articles ?? [];
+
+      // Deduplicate against articles already shown (feed + previous extras)
+      const existingIds = new Set([
+        ...currentFeedArticles.map((a) => a._id),
+        ...(extras[cat] ?? []).map((a) => a._id),
+      ]);
+      const fresh = incoming.filter((a) => !existingIds.has(a._id));
+
+      if (fresh.length === 0) {
+        setNoMore((prev) => ({ ...prev, [cat]: true }));
+      } else {
+        setExtras((prev) => ({ ...prev, [cat]: [...(prev[cat] ?? []), ...fresh] }));
+        setMorePage((prev) => ({ ...prev, [cat]: page + 1 }));
+        if (incoming.length < 3) setNoMore((prev) => ({ ...prev, [cat]: true }));
+      }
+    } catch {
+      setNoMore((prev) => ({ ...prev, [cat]: true }));
+    } finally {
+      setMoreLoading((prev) => ({ ...prev, [cat]: false }));
+    }
+  }
+
+  function collapseCategory(cat) {
+    setExtras((prev) => ({ ...prev, [cat]: [] }));
+    setMorePage((prev) => ({ ...prev, [cat]: 2 }));
+    setNoMore((prev) => ({ ...prev, [cat]: false }));
+  }
 
   // Measures the fixed header's actual height so main content never overlaps it,
   // even on mobile where the two-row interest section makes the header taller.
@@ -292,6 +336,9 @@ export function DashboardPage() {
                   if (!articles.length) return null;
                   const meta = INTEREST_META[cat] ?? DEFAULT_INTEREST_META;
                   const Icon = meta.icon;
+                  const catExtras = extras[cat] ?? [];
+                  const hasExtras = catExtras.length > 0;
+
                   return (
                     <section key={cat}>
                       {/* Section header */}
@@ -300,7 +347,8 @@ export function DashboardPage() {
                         <span className={`text-sm font-semibold ${meta.color}`}>{meta.label}</span>
                         {isFallback && <span className="text-xs font-normal opacity-70">(trending)</span>}
                       </div>
-                      {/* Article cards */}
+
+                      {/* Initial feed articles */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {articles.map((article) => (
                           <ArticleCard
@@ -309,6 +357,44 @@ export function DashboardPage() {
                             onClick={setSelectedArticle}
                           />
                         ))}
+
+                        {/* Extra articles loaded via Show more */}
+                        {catExtras.map((article) => (
+                          <ArticleCard
+                            key={article._id}
+                            article={article}
+                            onClick={setSelectedArticle}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Show more / Show less controls */}
+                      <div className="flex justify-center mt-5">
+                        {moreLoading[cat] ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Loading more…
+                          </div>
+                        ) : hasExtras && noMore[cat] ? (
+                          // Loaded everything — offer collapse
+                          <button
+                            onClick={() => collapseCategory(cat)}
+                            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2 rounded-full border border-border/60 hover:bg-muted/40"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                            Show less
+                          </button>
+                        ) : !noMore[cat] ? (
+                          // More articles available
+                          <button
+                            onClick={() => loadMoreForCategory(cat, articles)}
+                            className={`flex items-center gap-1.5 text-xs font-semibold transition-all duration-200 px-4 py-2 rounded-full border
+                              ${meta.bg} ${meta.border} ${meta.color} hover:opacity-80`}
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                            Show more {meta.label}
+                          </button>
+                        ) : null}
                       </div>
                     </section>
                   );

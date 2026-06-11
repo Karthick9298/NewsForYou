@@ -36,19 +36,19 @@ import { addDigestEmailJob } from '../queues/emailQueue.js';
 
 /* ── Schedule two cron jobs ─────────────────────────────────────────────────── */
 export function startDigestCron() {
-  // Morning — 06:05 AM
-  cron.schedule('5 6 * * *', () => {
+  // Morning — 07:00 AM
+  cron.schedule('0 7 * * *', () => {
     sendReminderToUsers('morning').catch((err) =>
       console.error('[DigestCron] Morning job error:', err.message)
     );
-  });
+  }, { timezone: 'Asia/Kolkata' });
 
   // Night — 09:00 PM
   cron.schedule('0 21 * * *', () => {
     sendReminderToUsers('night').catch((err) =>
       console.error('[DigestCron] Night job error:', err.message)
     );
-  });
+  }, { timezone: 'Asia/Kolkata' });
 
   console.log('📬  Digest cron jobs scheduled — morning at 06:05 AM, night at 09:00 PM');
 }
