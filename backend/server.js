@@ -3,6 +3,7 @@ import { connectDB } from './src/config/db.js';
 import app from './src/app.js';
 import { startNewsCron } from './src/cron/newsCron.js';
 import { startDigestCron } from './src/cron/digestCron.js';
+import { startKeepAliveCron } from './src/cron/keepAliveCron.js';
 
 // Start the BullMQ email worker (runs in same process, non-blocking)
 import './src/queues/emailWorker.js';
@@ -28,6 +29,9 @@ async function start() {
 
   // Start the morning (06:05 AM) and night (09:00 PM) digest email cron jobs
   startDigestCron();
+
+  // Ping own /api/health every 10 min to prevent Render free tier sleep
+  startKeepAliveCron();
 
   app.listen(PORT, () => {
     console.log(`\n🚀  NewsForYou API running on http://localhost:${PORT}`);
