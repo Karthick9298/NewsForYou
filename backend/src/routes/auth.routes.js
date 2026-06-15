@@ -15,7 +15,7 @@ const otpLimiter = rateLimit({
 });
 
 // ── Public routes ──────────────────────────────────────────────────────────────
-router.post('/send-otp', authController.sendOTP); // otp-limiter
+router.post('/send-otp', otpLimiter, authController.sendOTP); // otp-limiter
 router.post('/verify-otp', authController.verifyOTP);
 router.post('/logout', authController.logout);
 

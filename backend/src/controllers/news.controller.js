@@ -2,13 +2,14 @@ import mongoose from 'mongoose';
 import { fetchAndStoreAllArticles } from '../services/newsFetcher.service.js';
 import NewsArticle, { ARTICLE_CATEGORIES } from '../models/NewsArticle.js';
 import User from '../models/User.js';
+import AppError from '../utils/AppError.js';
 
 /**
  * POST /api/news/fetch
  * Manually trigger the NewsAPI fetch pipeline.
  * Use this for testing — will become a cron job in production.
  */
-export async function triggerFetch(req, res) {
+export async function triggerFetch(req, res, next) {
   try {
     const summary = await fetchAndStoreAllArticles();
     return res.status(200).json({
@@ -16,8 +17,7 @@ export async function triggerFetch(req, res) {
       summary,
     });
   } catch (err) {
-    console.error('[news.controller] triggerFetch error:', err);
-    return res.status(500).json({ message: err.message });
+    next(err);
   }
 }
 
@@ -26,16 +26,14 @@ export async function triggerFetch(req, res) {
  * Query params: category, page (default 1), limit (default 20)
  * Returns stored articles for quick verification.
  */
-export async function getArticles(req, res) {
+export async function getArticles(req, res, next) {
   try {
     const { category, page = 1, limit = 20 } = req.query;
 
     const filter = {};
     if (category) {
       if (!ARTICLE_CATEGORIES.includes(category)) {
-        return res.status(400).json({
-          message: `Invalid category. Must be one of: ${ARTICLE_CATEGORIES.join(', ')}`,
-        });
+        return next(new AppError(400, `Invalid category. Must be one of: ${ARTICLE_CATEGORIES.join(', ')}`));
       }
       filter.category = category;
     }
@@ -61,8 +59,7 @@ export async function getArticles(req, res) {
       articles,
     });
   } catch (err) {
-    console.error('[news.controller] getArticles error:', err);
-    return res.status(500).json({ message: err.message });
+    next(err);
   }
 }
 
@@ -75,7 +72,7 @@ export async function getArticles(req, res) {
  * If no articles exist at all for today → groups: null.
  * Requires authentication (protect middleware on the route).
  */
-export async function getFeed(req, res) {
+export async function getFeed(req, res, next) {
   try {
     const interests = req.user?.interests || [];
     const MIN_ARTICLES = 12;
@@ -133,8 +130,7 @@ export async function getFeed(req, res) {
 
     return res.status(200).json({ groups, fallback: false });
   } catch (err) {
-    console.error('[news.controller] getFeed error:', err);
-    return res.status(500).json({ message: err.message });
+    next(err);
   }
 }
 
@@ -142,7 +138,7 @@ export async function getFeed(req, res) {
  * GET /api/news/stats
  * Returns a count breakdown by category — handy for testing.
  */
-export async function getStats(req, res) {
+export async function getStats(req, res, next) {
   try {
     const breakdown = await NewsArticle.aggregate([
       {
@@ -158,8 +154,7 @@ export async function getStats(req, res) {
 
     return res.status(200).json({ total, breakdown });
   } catch (err) {
-    console.error('[news.controller] getStats error:', err);
-    return res.status(500).json({ message: err.message });
+    next(err);
   }
 }
 
@@ -169,16 +164,16 @@ export async function getStats(req, res) {
  * Adds the article if not already bookmarked, removes it if it is.
  * Returns { bookmarked: boolean }
  */
-export async function toggleBookmark(req, res) {
+export async function toggleBookmark(req, res, next) {
   try {
     const { articleId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(articleId)) {
-      return res.status(400).json({ message: 'Invalid article ID.' });
+      return next(new AppError(400, 'Invalid article ID.'));
     }
 
     const article = await NewsArticle.findById(articleId);
     if (!article) {
-      return res.status(404).json({ message: 'Article not found.' });
+      return next(new AppError(404, 'Article not found.'));
     }
 
     const user = req.user;
@@ -197,8 +192,7 @@ export async function toggleBookmark(req, res) {
     await user.save();
     return res.status(200).json({ bookmarked: !alreadyBookmarked });
   } catch (err) {
-    console.error('[news.controller] toggleBookmark error:', err);
-    return res.status(500).json({ message: err.message });
+    next(err);
   }
 }
 
@@ -206,7 +200,7 @@ export async function toggleBookmark(req, res) {
  * GET /api/news/bookmarks
  * Returns the authenticated user's bookmarked articles (newest first).
  */
-export async function getBookmarks(req, res) {
+export async function getBookmarks(req, res, next) {
   try {
     const user = await User.findById(req.user._id).populate({
       path: 'bookmarks',
@@ -216,7 +210,6 @@ export async function getBookmarks(req, res) {
     const articles = [...(user.bookmarks || [])].reverse();
     return res.status(200).json({ articles });
   } catch (err) {
-    console.error('[news.controller] getBookmarks error:', err);
-    return res.status(500).json({ message: err.message });
+    next(err);
   }
 }

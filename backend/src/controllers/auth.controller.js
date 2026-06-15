@@ -2,13 +2,14 @@ import User from '../models/User.js';
 import { generateOTP, verifyOTP as checkOTP, storeOTP, getStoredOTPHash, deleteOTP } from '../utils/otp.js';
 import { signToken, getCookieOptions } from '../utils/jwt.js';
 import { addOTPEmailJob } from '../queues/emailQueue.js';
+import AppError from '../utils/AppError.js';
 
 // ─── Send OTP ──────────────────────────────────────────────────────────────────
-export const sendOTP = async (req, res) => {
+export const sendOTP = async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ message: 'Please provide a valid email address.' });
+      return next(new AppError(400, 'Please provide a valid email address.'));
     }
 
     const otp = generateOTP();
@@ -21,26 +22,25 @@ export const sendOTP = async (req, res) => {
 
     return res.status(200).json({ message: 'OTP sent to your email. Valid for 10 minutes.' });
   } catch (err) {
-    console.error('[sendOTP]', err);
-    return res.status(500).json({ message: 'Failed to send OTP. Please try again.' });
+    next(err);
   }
 };
 
 // ─── Verify OTP ───────────────────────────────────────────────────────────────
-export const verifyOTP = async (req, res) => {
+export const verifyOTP = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) {
-      return res.status(400).json({ message: 'Email and OTP are required.' });
+      return next(new AppError(400, 'Email and OTP are required.'));
     }
 
     const storedHash = await getStoredOTPHash(email);
     if (!storedHash) {
-      return res.status(400).json({ message: 'OTP not found or already used. Please request a new one.' });
+      return next(new AppError(400, 'OTP not found or already used. Please request a new one.'));
     }
 
     if (!checkOTP(otp.toString().trim(), storedHash)) {
-      return res.status(400).json({ message: 'Invalid OTP. Please check and try again.' });
+      return next(new AppError(400, 'Invalid OTP. Please check and try again.'));
     }
 
     // OTP is valid — delete it (single-use)
@@ -83,17 +83,16 @@ export const verifyOTP = async (req, res) => {
       });
     }
   } catch (err) {
-    console.error('[verifyOTP]', err);
-    return res.status(500).json({ message: 'OTP verification failed. Please try again.' });
+    next(err);
   }
 };
 
 // ─── Save Interests (Step 2) ───────────────────────────────────────────────────
-export const saveInterests = async (req, res) => {
+export const saveInterests = async (req, res, next) => {
   try {
     const { interests } = req.body;
     if (!Array.isArray(interests) || interests.length < 1 || interests.length > 4) {
-      return res.status(400).json({ message: 'Select between 1 and 4 interests.' });
+      return next(new AppError(400, 'Select between 1 and 4 interests.'));
     }
 
     // Must match the User model enum (lowercase) and the frontend interest IDs
@@ -103,7 +102,7 @@ export const saveInterests = async (req, res) => {
     ];
     const invalid = interests.filter((i) => !validInterests.includes(i));
     if (invalid.length > 0) {
-      return res.status(400).json({ message: `Invalid interests: ${invalid.join(', ')}` });
+      return next(new AppError(400, `Invalid interests: ${invalid.join(', ')}`));
     }
 
     if (req.pendingEmail) {
@@ -123,17 +122,16 @@ export const saveInterests = async (req, res) => {
       return res.status(200).json({ message: 'Interests saved.', interests: req.user.interests });
     }
   } catch (err) {
-    console.error('[saveInterests]', err);
-    return res.status(500).json({ message: 'Failed to save interests.' });
+    next(err);
   }
 };
 
 // ─── Save Notification Time (Step 3 — completes registration) ─────────────────
-export const saveNotification = async (req, res) => {
+export const saveNotification = async (req, res, next) => {
   try {
     const { notificationTime } = req.body;
     if (!['morning', 'night'].includes(notificationTime)) {
-      return res.status(400).json({ message: 'notificationTime must be "morning" or "night".' });
+      return next(new AppError(400, 'notificationTime must be "morning" or "night".'));
     }
 
     req.user.notificationTime = notificationTime;
@@ -151,8 +149,7 @@ export const saveNotification = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[saveNotification]', err);
-    return res.status(500).json({ message: 'Failed to save notification preference.' });
+    next(err);
   }
 };
 

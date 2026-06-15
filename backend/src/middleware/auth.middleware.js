@@ -1,5 +1,6 @@
 import { verifyToken } from '../utils/jwt.js';
 import User from '../models/User.js';
+import AppError from '../utils/AppError.js';
 
 /**
  * Protect routes — reads JWT from HTTP-only cookie.
@@ -9,24 +10,23 @@ async function protect(req, res, next) {
   try {
     const token = req.cookies?.token;
     if (!token) {
-      return res.status(401).json({ message: 'Not authenticated. Please log in.' });
+      return next(new AppError(401, 'Not authenticated. Please log in.'));
     }
 
     const decoded = verifyToken(token);
     if (!decoded) {
-      return res.status(401).json({ message: 'Invalid or expired session. Please log in again.' });
+      return next(new AppError(401, 'Invalid or expired session. Please log in again.'));
     }
 
     const user = await User.findById(decoded.userId).select('-__v');
     if (!user) {
-      return res.status(401).json({ message: 'User no longer exists.' });
+      return next(new AppError(401, 'User no longer exists.'));
     }
 
     req.user = user;
     next();
   } catch (err) {
-    console.error('[protect]', err);
-    return res.status(500).json({ message: 'Auth middleware error.' });
+    next(err);
   }
 }
 
@@ -44,19 +44,19 @@ async function protectRegistration(req, res, next) {
   try {
     const token = req.cookies?.token;
     if (!token) {
-      return res.status(401).json({ message: 'Not authenticated. Please verify your email first.' });
+      return next(new AppError(401, 'Not authenticated. Please verify your email first.'));
     }
 
     const decoded = verifyToken(token);
     if (!decoded) {
-      return res.status(401).json({ message: 'Invalid or expired session. Please verify your email again.' });
+      return next(new AppError(401, 'Invalid or expired session. Please verify your email again.'));
     }
 
     if (decoded.userId) {
       // Token belongs to an existing user
       const user = await User.findById(decoded.userId).select('-__v');
       if (!user) {
-        return res.status(401).json({ message: 'User no longer exists.' });
+        return next(new AppError(401, 'User no longer exists.'));
       }
       req.user = user;
     } else if (decoded.email) {
@@ -64,15 +64,13 @@ async function protectRegistration(req, res, next) {
       req.user = null;
       req.pendingEmail = decoded.email;
     } else {
-      return res.status(401).json({ message: 'Invalid session.' });
+      return next(new AppError(401, 'Invalid session.'));
     }
 
     next();
   } catch (err) {
-    console.error('[protectRegistration]', err);
-    return res.status(500).json({ message: 'Auth middleware error.' });
+    next(err);
   }
 }
 
 export { protect, protectRegistration };
-

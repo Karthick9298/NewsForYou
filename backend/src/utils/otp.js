@@ -8,9 +8,10 @@ const OTP_KEY_PREFIX  = 'otp:';
  * Generates a 6-digit numeric OTP string.
  */
 function generateOTP() {
-  const buffer = crypto.randomBytes(3);
-  const num = buffer.readUIntBE(0, 3) % 1000000;
-  return String(num).padStart(6, '0');
+  const otp = crypto.randomInt(0, 1000000)
+                    .toString()
+                    .padStart(6, '0');
+    return otp;
 }
 
 /** SHA-256 hash of the OTP */
