@@ -6,11 +6,13 @@ const router = Router();
 
 // POST /api/news/fetch  — manually trigger the NewsAPI fetch pipeline (testing)
 
-// if (process.env.NODE_ENV === 'development')
-router.post('/fetch', triggerFetch); // only in development
+if (process.env.NODE_ENV === 'development'){
+    router.post('/fetch', triggerFetch); // only in development
+}
 
-
-// GET  /api/news/articles — list stored articles with optional ?category=&page=&limit= (protected)
+/**
+ *  GET  /api/news/articles — list stored articles with optional ?category=&page=&limit= (protected)
+ */
 router.get('/articles', protect, getArticles);
 
 // GET  /api/news/feed — personalised feed for the logged-in user (protected)

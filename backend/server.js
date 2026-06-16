@@ -5,8 +5,7 @@ import { startNewsCron } from './src/cron/newsCron.js';
 import { startDigestCron } from './src/cron/digestCron.js';
 import { startKeepAliveCron } from './src/cron/keepAliveCron.js';
 
-// Start the BullMQ email worker (runs in same process, non-blocking)
-import './src/queues/emailWorker.js';
+
 
 // ── Process-level crash guards ─────────────────────────────────────────────────
 process.on('uncaughtException', (err) => {

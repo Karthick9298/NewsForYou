@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
+    "start:worker": "node worker.js",
     "dev": "nodemon server.js",
+    "dev:worker": "nodemon worker.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

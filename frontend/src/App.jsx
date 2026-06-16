@@ -9,7 +9,6 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import LinkPage from './pages/LinkPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
@@ -31,14 +30,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/link-bank"
-                element={
-                  <ProtectedRoute>
-                    <LinkPage />
-                  </ProtectedRoute>
-                }
-              />
+              
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </PageTransition>

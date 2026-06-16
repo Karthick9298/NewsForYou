@@ -74,3 +74,4 @@ async function protectRegistration(req, res, next) {
 }
 
 export { protect, protectRegistration };
+
